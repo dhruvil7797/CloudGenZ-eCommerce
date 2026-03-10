@@ -53,7 +53,7 @@ export default function Auth() {
                             <path d="M14 4C14 4 8 8 8 16C8 20 10.5 23 14 24C17.5 23 20 20 20 16C20 8 14 4 14 4Z" fill="#2E7D32" />
                             <path d="M14 14L14 26" stroke="#1B5E20" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
-                        <span className="font-serif text-lg font-bold text-brand-secondary">NewLife Project</span>
+                        <span className="font-serif text-lg font-bold text-brand-secondary">ShopGenZ<span className="text-gray-400 font-normal text-sm">.store</span></span>
                     </div>
                     <h2 className="font-serif text-3xl font-bold text-brand-secondary mb-2">
                         {isLogin ? "Welcome Back" : "Create an Account"}

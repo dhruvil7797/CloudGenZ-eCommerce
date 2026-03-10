@@ -2,203 +2,439 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchProducts, fetchCategories } from '../api/woocommerce';
 import { useCart } from '../context/CartContext';
-import { ShoppingBag, Star, RefreshCw, ShoppingCart } from 'lucide-react';
+import { useWishlist } from '../context/WishlistContext';
+import {
+    ShoppingCart, Star, RefreshCw, Heart, ArrowRight,
+    Truck, ShieldCheck, RotateCcw, Headphones, Zap, Tag
+} from 'lucide-react';
+
+// ── WooCommerce API sort options ──────────────────────────────
+// Maps dropdown values → { orderby, order } accepted by WC REST v3.
+// Supported WC orderby values: date | price | title | popularity | id
+const SORT_OPTIONS = [
+    { label: 'Featured',            value: 'featured',   orderby: 'date',       order: 'desc' },
+    { label: 'Newest First',        value: 'newest',     orderby: 'date',       order: 'desc' },
+    { label: 'Price: Low to High',  value: 'price_asc',  orderby: 'price',      order: 'asc'  },
+    { label: 'Price: High to Low',  value: 'price_desc', orderby: 'price',      order: 'desc' },
+    { label: 'Name: A → Z',         value: 'title_asc',  orderby: 'title',      order: 'asc'  },
+    { label: 'Best Selling',        value: 'popularity', orderby: 'popularity', order: 'desc' },
+];
 
 export default function Home() {
-    const [products, setProducts] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const { addToCart } = useCart();
+    const [products, setProducts]         = useState([]);
+    const [categories, setCategories]     = useState([]);
+    const [loading, setLoading]           = useState(true);
+    const [sortLoading, setSortLoading]   = useState(false); // lightweight spinner for sort/filter changes
+    const [error, setError]               = useState(null);
+    const [activeCategory, setActiveCategory] = useState('all');
+    const [sortKey, setSortKey]           = useState('featured'); // current sort selection
+    const [email, setEmail]               = useState('');
+    const [subscribed, setSubscribed]     = useState(false);
+    const { addToCart }                   = useCart();
+    const { wishlist, toggleWishlist }    = useWishlist();
 
-    const loadData = async () => {
-        setLoading(true);
+    // ── Load categories once on mount ─────────────────────────
+    const loadCategories = async () => {
+        try {
+            const catData = await fetchCategories();
+            if (Array.isArray(catData))
+                setCategories(catData.filter(c => c.name !== 'Uncategorized'));
+        } catch (err) {
+            console.error('loadCategories:', err);
+        }
+    };
+
+    // ── Load products — called on mount AND whenever sort/category changes ──
+    const loadProducts = async ({ orderby = 'date', order = 'desc', category = '' } = {}) => {
+        setSortLoading(true);
         setError(null);
         try {
-            const [prodData, catData] = await Promise.all([
-                fetchProducts(),
-                fetchCategories()
-            ]);
-
-            if (Array.isArray(prodData)) {
-                setProducts(prodData);
-            } else {
-                throw new Error("Invalid response format");
-            }
-
-            if (Array.isArray(catData)) {
-                setCategories(catData.filter(c => c.name !== 'Uncategorized'));
-            }
+            const prodData = await fetchProducts({
+                orderby,
+                order,
+                ...(category ? { category } : {}),
+                perPage: 20,
+            });
+            if (Array.isArray(prodData)) setProducts(prodData);
+            else throw new Error('Invalid response format');
         } catch (err) {
             setError(err.message);
         } finally {
+            setSortLoading(false);
             setLoading(false);
         }
     };
 
+    // Initial load
     useEffect(() => {
-        loadData();
+        loadCategories();
+        loadProducts(); // default: date desc
     }, []);
+
+    // ── Handle sort dropdown change ──────────────────────────
+    const handleSortChange = (value) => {
+        setSortKey(value);
+        const opt = SORT_OPTIONS.find(o => o.value === value) || SORT_OPTIONS[0];
+        const catParam = activeCategory === 'all' ? '' : activeCategory;
+        loadProducts({ orderby: opt.orderby, order: opt.order, category: catParam });
+    };
+
+    // ── Handle category tab change ──────────────────────────
+    const handleCategoryChange = (catId) => {
+        setActiveCategory(catId);
+        const opt = SORT_OPTIONS.find(o => o.value === sortKey) || SORT_OPTIONS[0];
+        const catParam = catId === 'all' ? '' : catId;
+        loadProducts({ orderby: opt.orderby, order: opt.order, category: catParam });
+    };
+
+    // filteredProducts is now always the full API-filtered list (no client-side filtering needed)
+    const filteredProducts = products;
+
+    const isWishlisted = (id) => wishlist.some(w => w.id === id);
+
+    const features = [
+        { icon: Truck, title: 'Free Shipping', desc: 'On orders over $50' },
+        { icon: ShieldCheck, title: 'Secure Payment', desc: '100% protected checkout' },
+        { icon: RotateCcw, title: 'Easy Returns', desc: '30-day return policy' },
+        { icon: Headphones, title: '24/7 Support', desc: 'Always here to help' },
+    ];
 
     return (
         <main className="w-full bg-[#fefdf8]">
-            {/* HERO — full-bleed split from Design 2 */}
-            <header className="min-h-[85vh] grid grid-cols-1 lg:grid-cols-2 lg:gap-20 items-center px-4 sm:px-6 lg:px-16 py-12 lg:py-0 max-w-[1400px] mx-auto">
-                <div className="order-2 lg:order-1 pt-10 lg:pt-0">
-                    <div className="text-[11px] font-bold tracking-[0.15em] uppercase text-brand-primary bg-[#e8f5e9] px-4 py-1.5 rounded-full inline-block mb-6">
-                        Non-Profit · Ottawa, Canada
-                    </div>
-                    <h1 className="font-serif text-[clamp(2.5rem,5vw,5rem)] font-bold leading-[1.05] text-brand-secondary mb-6">
-                        Empowering <br />
-                        <span className="text-brand-primary">Women.</span><br />
-                        Transforming <br />
-                        Communities.
-                    </h1>
-                    <p className="text-lg text-[#4a5e4d] max-w-[480px] mb-8 leading-[1.75]">
-                        From Sierra Leone to Ottawa — NewLife Project builds economic independence, cultural pride, and community resilience through our social enterprise collections.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-6 mb-8">
-                        <button onClick={() => window.scrollTo({ top: 900, behavior: 'smooth' })} className="btn-primary px-8 py-3.5 text-[0.95rem]">
-                            Shop Collections
-                        </button>
-                        <a href="#" className="font-semibold text-brand-secondary border-b-2 border-brand-primary pb-0.5 hover:text-brand-primary transition-colors">
-                            Make a Donation &rarr;
-                        </a>
-                    </div>
-                    <div className="flex flex-wrap gap-6 border-t border-gray-200 pt-6">
-                        <span className="text-[0.8rem] text-[#4a5e4d] font-bold">✓ Registered Non-Profit</span>
-                        <span className="text-[0.8rem] text-[#4a5e4d] font-bold">✓ Impact Driven</span>
-                        <span className="text-[0.8rem] text-[#4a5e4d] font-bold">✓ 30+ Years of Mission</span>
-                    </div>
+
+            {/* ── HERO BANNER ─────────────────────────────────────────── */}
+            <section className="relative overflow-hidden bg-gradient-to-br from-[#1e2520] via-[#2a3528] to-[#1b5e20] min-h-[88vh] flex items-center">
+                {/* Background decorative blobs */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full bg-brand-primary/20 blur-3xl" />
+                    <div className="absolute bottom-0 -left-24 w-[400px] h-[400px] rounded-full bg-[#f5c842]/10 blur-3xl" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-white/[0.02] border border-white/[0.04]" />
                 </div>
 
-                <div className="order-1 lg:order-2 relative mt-10 lg:mt-0">
-                    <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl relative bg-gradient-to-br from-[#2e7d32] to-[#0a3d0a]">
-                        <img
-                            src="https://images.unsplash.com/photo-1587614203976-365c74645e83?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                            alt="Women Empowered"
-                            className="w-full h-full object-cover mix-blend-overlay opacity-80"
-                        />
-                        <div className="absolute bottom-0 left-0 right-0 bg-[#1e2520]/80 backdrop-blur-md text-white p-5 font-serif italic text-xl">
-                            Building Up Women of Virtue
+                <div className="relative max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 py-20 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center w-full">
+                    {/* Left: copy */}
+                    <div className="order-2 lg:order-1">
+                        {/* Promo pill */}
+                        <div className="inline-flex items-center gap-2 bg-[#f5c842]/15 border border-[#f5c842]/30 px-4 py-2 rounded-full mb-8">
+                            <Zap size={13} className="text-[#f5c842]" />
+                            <span className="text-[#f5c842] text-xs font-bold uppercase tracking-widest">Summer Sale — Up to 40% Off</span>
+                        </div>
+
+                        <h1 className="font-serif text-[clamp(2.8rem,5.5vw,5.5rem)] font-bold leading-[1.04] text-white mb-6">
+                            Shop the<br />
+                            <span className="text-[#f5c842]">Latest</span><br />
+                            Collection.
+                        </h1>
+                        <p className="text-white/65 text-lg max-w-[480px] mb-10 leading-relaxed">
+                            Discover handcrafted, ethically sourced goods. From apparel to home décor — premium quality delivered to your door.
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-4 mb-12">
+                            <a href="#store" className="btn-primary px-8 py-4 text-[0.95rem] inline-flex items-center gap-2 shadow-[0_8px_32px_rgba(46,125,50,0.4)]">
+                                Shop Now <ArrowRight size={16} />
+                            </a>
+                            <Link to="/wishlist" className="inline-flex items-center gap-2 text-white/80 font-semibold border-b border-white/30 pb-0.5 hover:text-[#f5c842] hover:border-[#f5c842] transition-colors text-sm">
+                                View Wishlist <Heart size={14} />
+                            </Link>
+                        </div>
+
+                        {/* Trust badges */}
+                        <div className="flex flex-wrap gap-6">
+                            {['Free Shipping $50+', 'Secure Checkout', '30-Day Returns'].map(b => (
+                                <span key={b} className="flex items-center gap-1.5 text-white/50 text-xs font-semibold">
+                                    <ShieldCheck size={12} className="text-brand-primary" /> {b}
+                                </span>
+                            ))}
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3 mt-4">
-                        <div className="bg-[#e8f5e9] rounded-lg p-4 text-center">
-                            <span className="block font-serif text-2xl font-bold text-brand-primary">1,000+</span>
-                            <span className="text-[0.7rem] font-bold uppercase tracking-wider text-[#4a5e4d] mt-1 block">Lives Touched</span>
-                        </div>
-                        <div className="bg-[#f5c842]/20 rounded-lg p-4 text-center">
-                            <span className="block font-serif text-2xl font-bold text-[#d4a017]">3</span>
-                            <span className="text-[0.7rem] font-bold uppercase tracking-wider text-[#4a5e4d] mt-1 block">Nations</span>
-                        </div>
-                        <div className="bg-[#e8f5e9] rounded-lg p-4 text-center">
-                            <span className="block font-serif text-2xl font-bold text-brand-primary">100%</span>
-                            <span className="text-[0.7rem] font-bold uppercase tracking-wider text-[#4a5e4d] mt-1 block">Non-Profit</span>
+                    {/* Right: product card showcase */}
+                    <div className="order-1 lg:order-2 flex justify-center lg:justify-end">
+                        <div className="relative w-full max-w-[420px]">
+                            {/* Main card */}
+                            <div className="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl relative bg-gradient-to-br from-[#2e7d32]/30 to-[#0a3d0a]/50 border border-white/10">
+                                <img
+                                    src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=600&auto=format&fit=crop"
+                                    alt="Featured Collection"
+                                    className="w-full h-full object-cover opacity-80"
+                                />
+                                {/* Overlay badge */}
+                                <div className="absolute top-4 left-4">
+                                    <span className="bg-[#f5c842] text-[#1e2520] text-[10px] font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-full shadow">
+                                        New Arrival
+                                    </span>
+                                </div>
+                                {/* Bottom info strip */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-[#1e2520]/80 backdrop-blur-md p-5">
+                                    <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">Featured</p>
+                                    <p className="text-white font-serif text-xl font-bold">Summer Collection 2025</p>
+                                    <p className="text-[#f5c842] font-bold text-sm mt-1">Starting at $24.99</p>
+                                </div>
+                            </div>
+
+                            {/* Floating stat cards */}
+                            <div className="absolute -left-12 top-1/3 bg-white rounded-xl p-4 shadow-xl border border-gray-100 min-w-[130px]">
+                                <div className="flex items-center gap-1 text-[#f5c842] mb-1">
+                                    {[...Array(5)].map((_, i) => <Star key={i} size={11} className="fill-current" />)}
+                                </div>
+                                <p className="text-brand-secondary font-bold text-sm">4.9 / 5.0</p>
+                                <p className="text-gray-400 text-[10px] font-semibold">2,400+ Reviews</p>
+                            </div>
+                            <div className="absolute -right-8 bottom-1/4 bg-[#f5c842] rounded-xl p-4 shadow-xl min-w-[110px]">
+                                <Tag size={20} className="text-[#1e2520] mb-1" />
+                                <p className="text-[#1e2520] font-extrabold text-lg leading-none">40%</p>
+                                <p className="text-[#1e2520]/70 text-[10px] font-bold uppercase tracking-wide">Sale Off</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </header>
+            </section>
 
-            {/* TICKER */}
+            {/* ── ANNOUNCEMENT TICKER ──────────────────────────────────── */}
             <div className="bg-brand-primary flex items-center overflow-hidden border-y border-[#1b5e20]">
-                <span className="bg-[#f5c842] text-brand-secondary text-xs font-extrabold uppercase tracking-widest px-6 py-3 whitespace-nowrap z-10 shrink-0">
-                    Latest News
+                <span className="bg-[#f5c842] text-brand-secondary text-[10px] font-extrabold uppercase tracking-widest px-6 py-3 whitespace-nowrap z-10 shrink-0">
+                    🔥 Hot Deals
                 </span>
-                <div className="whitespace-nowrap px-6 py-3 text-white/90 text-sm font-semibold animate-[tickerScroll_22s_linear_infinite]">
-                    🌿 100% of proceeds go back to communities &nbsp;·&nbsp; 🎪 Spring African Market Collection Now Available &nbsp;·&nbsp; 🌍 Track our impact in West Africa
+                <div className="whitespace-nowrap px-6 py-3 text-white/90 text-sm font-semibold animate-[tickerScroll_28s_linear_infinite]">
+                    🚚 Free shipping on orders over $50 &nbsp;·&nbsp; 🎉 New arrivals every week &nbsp;·&nbsp; 💳 Secure & encrypted payments &nbsp;·&nbsp; 🔄 Easy 30-day returns &nbsp;·&nbsp; ⚡ Flash Sale: Extra 15% off with code <strong>SAVE15</strong> &nbsp;·&nbsp; 🌟 Join 10,000+ happy customers
                 </div>
             </div>
 
-            {/* Main Collections Content */}
-            <section className="bg-[#f5f8f5] py-20 lg:py-32" id="store">
+            {/* ── CATEGORY CARDS ───────────────────────────────────────── */}
+            {categories.length > 0 && (
+                <section className="py-16 lg:py-24 bg-white">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="text-center mb-12">
+                            <span className="eyebrow">Browse By</span>
+                            <h2 className="font-serif text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold text-brand-secondary">
+                                Shop Categories
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {/* "All" tile */}
+                            <button
+                                onClick={() => { setActiveCategory('all'); document.getElementById('store')?.scrollIntoView({ behavior: 'smooth' }); }}
+                                className="group relative aspect-square rounded-xl overflow-hidden bg-brand-secondary flex items-end p-5 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/60 to-brand-secondary opacity-80 group-hover:opacity-90 transition-opacity" />
+                                <div className="relative z-10">
+                                    <p className="text-white font-bold text-[10px] uppercase tracking-widest opacity-70 mb-1">Explore</p>
+                                    <p className="text-white font-serif text-xl font-bold">All Products</p>
+                                </div>
+                            </button>
+                            {categories.slice(0, 7).map((cat, i) => {
+                                const catColors = [
+                                    'from-[#2e7d32] to-[#1b5e20]',
+                                    'from-[#1e2520] to-[#2a3528]',
+                                    'from-[#d4a017] to-[#b8860b]',
+                                    'from-[#4a5e4d] to-[#2e3d31]',
+                                    'from-[#1b5e20] to-[#0a3d0a]',
+                                    'from-[#f5c842] to-[#d4a017]',
+                                    'from-[#2a3528] to-[#1e2520]',
+                                ];
+                                return (
+                                    <button
+                                        key={cat.id}
+                                     onClick={() => { handleCategoryChange(String(cat.id)); document.getElementById('store')?.scrollIntoView({ behavior: 'smooth' }); }}
+                                        className="group relative aspect-square rounded-xl overflow-hidden flex items-end p-5 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+                                    >
+                                        <div className={`absolute inset-0 bg-gradient-to-br ${catColors[i % catColors.length]}`} />
+                                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                                        <div className="relative z-10">
+                                            <p className="text-white/70 font-bold text-[10px] uppercase tracking-widest mb-1">Category</p>
+                                            <p className="text-white font-serif text-xl font-bold leading-tight">{cat.name}</p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </section>
+            )}
+
+            {/* ── FEATURES STRIP ───────────────────────────────────────── */}
+            <section className="bg-[#f5f8f5] py-10 border-y border-[#1e2520]/05">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                        {features.map(({ icon: Icon, title, desc }) => (
+                            <div key={title} className="flex items-center gap-4">
+                                <div className="w-11 h-11 rounded-xl bg-brand-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <Icon size={20} className="text-brand-primary" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-brand-secondary text-sm">{title}</p>
+                                    <p className="text-[#4a5e4d] text-xs">{desc}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ── PRODUCT GRID ─────────────────────────────────────────── */}
+            <section className="bg-[#fefdf8] py-20 lg:py-32" id="store">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-                    <div className="flex flex-col md:flex-row justify-between items-end mb-16 border-b border-gray-200 pb-6">
+                    {/* Section header */}
+                    <div className="flex flex-col md:flex-row justify-between items-end mb-10 border-b border-gray-200 pb-6 gap-6">
                         <div className="max-w-xl">
-                            <span className="eyebrow">Social Enterprise</span>
-                            <h2 className="text-[clamp(2rem,4vw,3rem)] font-bold text-brand-secondary font-serif leading-tight mt-2 mb-4">
-                                Shop with Purpose
+                            <span className="eyebrow">Our Store</span>
+                            <h2 className="font-serif text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold text-brand-secondary leading-tight">
+                                All Products
                             </h2>
-                            <p className="text-[#4a5e4d]">Every purchase directly supports our programs in Ottawa and West Africa. Support the women and communities creating these beautiful items.</p>
                         </div>
 
-                        <div className="mt-8 flex flex-col items-end gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             {error && (
-                                <button onClick={loadData} className="flex items-center text-red-600 hover:text-red-800 font-medium text-sm transition">
-                                    <RefreshCw size={14} className="mr-1" /> Retry Connection
+                                <button
+                                    onClick={() => {
+                                        const opt = SORT_OPTIONS.find(o => o.value === sortKey) || SORT_OPTIONS[0];
+                                        const catParam = activeCategory === 'all' ? '' : activeCategory;
+                                        loadProducts({ orderby: opt.orderby, order: opt.order, category: catParam });
+                                    }}
+                                    className="flex items-center text-red-600 hover:text-red-800 font-medium text-sm transition"
+                                >
+                                    <RefreshCw size={14} className="mr-1" /> Retry
                                 </button>
                             )}
-                            <div className="flex gap-4">
-                                <select className="bg-white border text-sm font-semibold border-gray-300 text-brand-secondary rounded py-2 px-4 outline-none focus:border-brand-primary">
-                                    <option>All Categories</option>
-                                    {categories.map(cat => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            {/* Sort dropdown — each value maps to real WooCommerce API orderby + order params */}
+                            <div className="relative">
+                                <select
+                                    value={sortKey}
+                                    onChange={(e) => handleSortChange(e.target.value)}
+                                    disabled={sortLoading}
+                                    className="bg-white border text-sm font-semibold border-gray-300 text-brand-secondary rounded-lg py-2 pl-4 pr-9 outline-none focus:border-brand-primary disabled:opacity-60 appearance-none cursor-pointer"
+                                >
+                                    {SORT_OPTIONS.map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
                                     ))}
                                 </select>
-                                <select className="bg-white border text-sm font-semibold border-gray-300 text-brand-secondary rounded py-2 px-4 outline-none focus:border-brand-primary">
-                                    <option>Sort by Latest</option>
-                                    <option>Sort by Price: Low to High</option>
-                                    <option>Sort by Price: High to Low</option>
-                                </select>
+                                {/* Custom dropdown arrow / spinner */}
+                                <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+                                    {sortLoading
+                                        ? <RefreshCw size={13} className="animate-spin text-brand-primary" />
+                                        : <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                    }
+                                </div>
                             </div>
                         </div>
                     </div>
 
+                    <div className="flex flex-wrap gap-2 mb-10">
+                        <button
+                            onClick={() => handleCategoryChange('all')}
+                            className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${activeCategory === 'all' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white text-brand-secondary border-gray-200 hover:border-brand-primary hover:text-brand-primary'}`}
+                        >
+                            All
+                        </button>
+                        {categories.map(cat => (
+                            <button
+                                key={cat.id}
+                                onClick={() => handleCategoryChange(String(cat.id))}
+                                className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${activeCategory === String(cat.id) ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white text-brand-secondary border-gray-200 hover:border-brand-primary hover:text-brand-primary'}`}
+                            >
+                                {cat.name}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Loading / error / products */}
                     {loading ? (
-                        <div className="flex justify-center items-center py-20">
-                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-primary"></div>
+                        <div className="flex flex-col items-center justify-center py-24 gap-4">
+                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-primary" />
+                            <p className="text-[#4a5e4d] text-sm font-semibold">Loading products…</p>
+                        </div>
+                    ) : error ? (
+                        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+                            <p className="text-red-600 font-semibold">{error}</p>
+                            <button
+                                onClick={() => {
+                                    const opt = SORT_OPTIONS.find(o => o.value === sortKey) || SORT_OPTIONS[0];
+                                    const catParam = activeCategory === 'all' ? '' : activeCategory;
+                                    loadProducts({ orderby: opt.orderby, order: opt.order, category: catParam });
+                                }}
+                                className="btn-primary px-6"
+                            >Retry</button>
+                        </div>
+                    ) : filteredProducts.length === 0 ? (
+                        <div className="text-center py-24">
+                            <p className="text-[#4a5e4d] font-semibold mb-4">No products found in this category.</p>
+                            <button onClick={() => handleCategoryChange('all')} className="btn-primary px-6">View All</button>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {products.map(product => (
-                                <div key={product.id} className="group bg-white rounded-lg border border-[#1e2520]/10 overflow-hidden hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(30,37,32,0.1)] transition-all duration-300 flex flex-col">
+                        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 transition-opacity duration-300 ${sortLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                            {filteredProducts.map(product => (
+                                <div key={product.id} className="group bg-white rounded-xl border border-[#1e2520]/10 overflow-hidden hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(30,37,32,0.1)] transition-all duration-300 flex flex-col">
                                     <Link to={`/product/${product.id}`} className="relative aspect-[4/5] bg-gray-50 overflow-hidden block">
                                         <img
-                                            src={product.images?.[0]?.src || "https://images.unsplash.com/photo-1560393464-5c69a73c5770?auto=format&fit=crop&w=600&q=80"}
+                                            src={product.images?.[0]?.src || 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?auto=format&fit=crop&w=600&q=80'}
                                             alt={product.name}
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                                         />
+                                        {/* Category badge */}
                                         {product.categories?.[0] && (
-                                            <div className="absolute top-4 left-4">
-                                                <span className="text-[0.65rem] font-bold uppercase tracking-widest bg-white/90 backdrop-blur text-brand-secondary px-3 py-1 rounded-full shadow-sm">
+                                            <div className="absolute top-3 left-3">
+                                                <span className="text-[10px] font-bold uppercase tracking-widest bg-white/90 backdrop-blur text-brand-secondary px-3 py-1 rounded-full shadow-sm">
                                                     {product.categories[0].name}
                                                 </span>
                                             </div>
                                         )}
+                                        {/* Sale badge */}
+                                        {product.sale_price && (
+                                            <div className="absolute top-3 right-3">
+                                                <span className="text-[10px] font-extrabold uppercase bg-[#f5c842] text-brand-secondary px-2.5 py-1 rounded-full shadow-sm">
+                                                    Sale
+                                                </span>
+                                            </div>
+                                        )}
 
-                                        {/* Hover quick add overlay */}
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                                        {/* Hover overlay */}
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end p-4 gap-2">
                                             <button
                                                 onClick={(e) => { e.preventDefault(); addToCart(product); }}
-                                                className="w-full bg-brand-primary text-white font-bold py-3 rounded flex items-center justify-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 shadow-lg hover:bg-[#1b5e20]"
+                                                className="w-full bg-brand-primary text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 shadow-lg hover:bg-[#1b5e20] text-sm"
                                             >
-                                                <ShoppingCart size={18} /> Quick Add
+                                                <ShoppingCart size={16} /> Quick Add
                                             </button>
                                         </div>
                                     </Link>
 
                                     <div className="p-5 flex-1 flex flex-col">
-                                        <div className="flex items-center gap-1 mb-2 text-[#f5c842]">
-                                            <Star size={12} className="fill-current" />
-                                            <Star size={12} className="fill-current" />
-                                            <Star size={12} className="fill-current" />
-                                            <Star size={12} className="fill-current" />
-                                            <Star size={12} className="fill-current" />
+                                        {/* Stars */}
+                                        <div className="flex items-center gap-0.5 mb-2 text-[#f5c842]">
+                                            {[...Array(5)].map((_, i) => <Star key={i} size={11} className="fill-current" />)}
+                                            <span className="text-gray-400 text-[10px] ml-1 font-semibold">(24)</span>
                                         </div>
                                         <Link to={`/product/${product.id}`} className="flex-1">
-                                            <h4 className="font-serif text-lg font-bold text-brand-secondary mb-1 leading-tight group-hover:text-brand-primary transition-colors line-clamp-2">
+                                            <h4 className="font-serif text-[1.05rem] font-bold text-brand-secondary mb-1 leading-tight group-hover:text-brand-primary transition-colors line-clamp-2">
                                                 {product.name}
                                             </h4>
                                         </Link>
-                                        <div className="mt-4 pt-4 border-t border-[#1e2520]/5 flex items-end justify-between">
-                                            <div className="font-serif text-xl font-bold text-brand-secondary">
-                                                ${product.price || '0.00'}
+                                        <div className="mt-4 pt-4 border-t border-[#1e2520]/05 flex items-end justify-between">
+                                            <div>
+                                                {product.sale_price ? (
+                                                    <div className="flex items-baseline gap-1.5">
+                                                        <span className="font-serif text-xl font-bold text-brand-primary">${product.sale_price}</span>
+                                                        <span className="text-gray-400 text-sm line-through">${product.regular_price}</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="font-serif text-xl font-bold text-brand-secondary">${product.price || '0.00'}</span>
+                                                )}
                                             </div>
-                                            <button onClick={(e) => { e.preventDefault(); addToCart(product); }} className="text-brand-primary hover:text-[#1b5e20] p-1">
-                                                <ShoppingCart strokeWidth={2.5} size={20} />
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => toggleWishlist(product)}
+                                                    className={`p-1.5 rounded-lg transition-colors ${isWishlisted(product.id) ? 'text-red-500 bg-red-50' : 'text-gray-400 hover:text-red-400 hover:bg-red-50'}`}
+                                                >
+                                                    <Heart size={15} className={isWishlisted(product.id) ? 'fill-current' : ''} />
+                                                </button>
+                                                <button
+                                                    onClick={() => addToCart(product)}
+                                                    className="p-1.5 rounded-lg text-brand-primary hover:bg-brand-primary hover:text-white transition-colors"
+                                                >
+                                                    <ShoppingCart size={15} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -208,46 +444,57 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* IMPACT BENTO - from Design 2 */}
-            <section className="bg-[#1b5e20] py-20 lg:py-32">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <span className="eyebrow text-white/60">Our Impact</span>
-                    <h2 className="text-[clamp(2rem,4vw,3rem)] font-bold text-white font-serif leading-tight">Numbers That Tell<br />Our Story</h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-10">
-                        <div className="bg-white/5 border border-white/10 rounded-lg p-8 text-white col-span-1 md:col-span-2">
-                            <span className="block font-serif text-[clamp(2.5rem,4vw,3.5rem)] font-bold leading-none mb-2">1,000+</span>
-                            <span className="text-xs font-bold uppercase tracking-[0.1em] text-white/50 mb-2 block">Lives Touched Globally</span>
-                            <p className="text-sm text-white/70 max-w-sm">Women, men, children, and families across 4 countries over 30 years</p>
+            {/* ── PROMO BANNER ─────────────────────────────────────────── */}
+            <section className="bg-brand-secondary py-16 lg:py-24 relative overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-brand-primary/15 blur-3xl" />
+                    <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-[#f5c842]/10 blur-3xl" />
+                </div>
+                <div className="relative max-w-4xl mx-auto px-4 text-center">
+                    <span className="inline-block bg-[#f5c842]/20 text-[#f5c842] text-xs font-extrabold uppercase tracking-widest px-4 py-2 rounded-full mb-6">
+                        Limited Time Offer
+                    </span>
+                    <h2 className="font-serif text-[clamp(2rem,4.5vw,3.5rem)] font-bold text-white mb-4">
+                        Get 15% Off Your First Order
+                    </h2>
+                    <p className="text-white/60 mb-8 text-lg max-w-xl mx-auto">
+                        Sign up for our newsletter and unlock an exclusive welcome discount plus early access to new arrivals.
+                    </p>
+                    {subscribed ? (
+                        <div className="inline-flex items-center gap-2 bg-brand-primary/20 text-brand-primary border border-brand-primary/30 px-6 py-3 rounded-full font-bold">
+                            🎉 You're in! Check your inbox.
                         </div>
-                        <div className="bg-[#d4a017] rounded-lg p-8 text-[#1e2520] flex flex-col justify-center">
-                            <span className="block font-serif text-[clamp(2.5rem,4vw,3.5rem)] font-bold leading-none mb-2">3</span>
-                            <span className="text-xs font-bold uppercase tracking-[0.1em] text-[#1e2520]/70 block">West African Nations</span>
-                        </div>
-                        <div className="bg-white/5 border border-white/10 rounded-lg p-8 text-white">
-                            <span className="block font-serif text-[clamp(2.5rem,4vw,3.5rem)] font-bold leading-none mb-2">10</span>
-                            <span className="text-xs font-bold uppercase tracking-[0.1em] text-white/50 block">Years in Ottawa</span>
-                        </div>
-                        <div className="bg-white/10 border border-white/10 rounded-lg p-8 text-white">
-                            <span className="block font-serif text-[clamp(2.5rem,4vw,3.5rem)] font-bold leading-none mb-2">8</span>
-                            <span className="text-xs font-bold uppercase tracking-[0.1em] text-white/50 block">Active Programs</span>
-                        </div>
-                        <div className="bg-white/5 border border-white/10 rounded-lg p-8 text-white flex flex-col justify-center">
-                            <span className="block font-serif text-[clamp(2.5rem,4vw,3.5rem)] font-bold leading-none mb-2">100%</span>
-                            <span className="text-xs font-bold uppercase tracking-[0.1em] text-white/50 block">Community-Driven</span>
-                        </div>
-                    </div>
+                    ) : (
+                        <form
+                            onSubmit={(e) => { e.preventDefault(); if (email) setSubscribed(true); }}
+                            className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
+                        >
+                            <input
+                                type="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="Enter your email address"
+                                className="flex-1 px-5 py-3.5 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 outline-none focus:border-brand-primary focus:bg-white/15 transition text-sm font-medium"
+                            />
+                            <button type="submit" className="btn-primary px-6 py-3.5 whitespace-nowrap">
+                                Get 15% Off
+                            </button>
+                        </form>
+                    )}
+                    <p className="text-white/30 text-xs mt-4">No spam, unsubscribe anytime.</p>
                 </div>
             </section>
 
-            {/* Global CSS for Ticker animation */}
+            {/* Ticker keyframe */}
             <style dangerouslySetInnerHTML={{
                 __html: `
         @keyframes tickerScroll {
            0% { transform: translateX(100%); }
            100% { transform: translateX(-100%); }
         }
-      `}} />
+      `
+            }} />
         </main>
     );
 }

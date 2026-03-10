@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-bg: var(--brand-bg);
+  --color-brand-text: var(--brand-text);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-muted: var(--brand-muted);
+
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+:root {
+  /* ==============================================================
+     Design 2 ("Virtue") Global Color Scheme
+     ============================================================== */
+  --brand-primary: #2e7d32;
+  /* Green */
+  --brand-primary-dark: #1b5e20;
+  --brand-primary-light: #e8f5e9;
+
+  --brand-secondary: #1e2520;
+  /* Charcoal */
+
+  --brand-accent: #f5c842;
+  /* Gold */
+  --brand-accent-dark: #d4a017;
+
+  --brand-bg: #fefdf8;
+  /* Off-White */
+  --brand-surface: #ffffff;
+
+  --brand-text: #1e2520;
+  --brand-muted: #4a5e4d;
+}
+
+/* Custom Web Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+body {
+  background-color: var(--brand-bg);
+  color: var(--brand-text);
+  font-family: var(--font-sans);
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3,
+h4,
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--brand-primary);
+  display: block;
+  margin-bottom: 12px;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-brand-primary text-white py-3 px-6 rounded-md font-semibold text-sm transition-all duration-200 hover:bg-[#1b5e20] hover:-translate-y-0.5;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 bg-brand-secondary text-white py-3 px-6 rounded-md font-semibold text-sm transition-all duration-200 hover:bg-black hover:-translate-y-0.5;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 bg-brand-accent text-brand-secondary py-3 px-6 rounded-md font-bold text-sm transition-all duration-200 hover:-translate-y-0.5;
+  }
+
+  .card {
+    @apply bg-white border border-gray-100 rounded-lg overflow-hidden transition-all duration-300;
+  }
+}

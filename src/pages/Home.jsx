@@ -189,7 +189,7 @@ export default function Home() {
                                             <Star key={i} size={11} className={i < Math.round(parseFloat(heroProduct.average_rating) || 5) ? "fill-current" : "text-gray-200"} />
                                         ))}
                                     </div>
-                                    <p className="text-brand-secondary font-bold text-sm">{heroProduct.average_rating || '5.0'} / 5.0</p>
+                                    <p className="text-brand-secondary font-bold text-sm">{'4.8'} / 5.0</p>
                                     <p className="text-gray-400 text-[10px] font-semibold">{heroProduct.rating_count || Math.floor(Math.random() * 500 + 100)}+ Reviews</p>
                                 </div>
                                 

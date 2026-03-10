@@ -116,9 +116,7 @@ export default function Navbar() {
                     <div className="md:hidden bg-[#fefdf8] border-t border-[#1e2520]/10 px-4 py-4 flex flex-col gap-3">
                         <Link to="/" onClick={() => setMobileOpen(false)} className="font-semibold text-brand-secondary py-2 border-b border-[#1e2520]/05 hover:text-brand-primary transition-colors">Home</Link>
                         <a href="/#store" onClick={() => setMobileOpen(false)} className="font-semibold text-brand-secondary py-2 border-b border-[#1e2520]/05 hover:text-brand-primary transition-colors">Shop</a>
-                        <a href="/#store" onClick={() => setMobileOpen(false)} className="font-semibold text-brand-secondary py-2 border-b border-[#1e2520]/05 hover:text-brand-primary transition-colors">New Arrivals</a>
                         <Link to="/wishlist" onClick={() => setMobileOpen(false)} className="font-semibold text-brand-secondary py-2 border-b border-[#1e2520]/05 hover:text-brand-primary transition-colors">Wishlist</Link>
-                        <a href="/#store" onClick={() => setMobileOpen(false)} className="font-bold text-[#d4a017] py-2 flex items-center gap-1.5"><Tag size={14} /> Sale</a>
                         {!user && (
                             <Link to="/auth" onClick={() => setMobileOpen(false)} className="btn-primary w-full mt-2 justify-center">Sign In</Link>
                         )}

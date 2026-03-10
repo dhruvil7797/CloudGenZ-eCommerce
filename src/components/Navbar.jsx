@@ -44,12 +44,7 @@ export default function Navbar() {
                     <nav className="space-x-6 hidden md:flex font-medium text-[0.85rem] text-[#4a5e4d]">
                         <Link to="/" className="hover:text-brand-primary transition-colors">Home</Link>
                         <a href="/#store" className="hover:text-brand-primary transition-colors">Shop</a>
-                        <a href="/#store" className="hover:text-brand-primary transition-colors">New Arrivals</a>
                         <Link to="/wishlist" className="hover:text-brand-primary transition-colors">Wishlist</Link>
-                        {/* Sale highlight */}
-                        <a href="/#store" className="flex items-center gap-1 text-[#d4a017] font-bold hover:text-[#b8860b] transition-colors">
-                            <Tag size={13} /> Sale
-                        </a>
                     </nav>
 
                     {/* Actions */}

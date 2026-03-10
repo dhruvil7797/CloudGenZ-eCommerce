@@ -10,7 +10,10 @@ import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
 import Auth from './pages/Auth'
 import Account from './pages/Account'
+import OrderDetail from './pages/OrderDetail'
 import Wishlist from './pages/Wishlist'
+import Search from './pages/Search'
+import ScrollToTop from './components/ScrollToTop'
 import './index.css'
 
 function App() {
@@ -19,6 +22,7 @@ function App() {
       <CartProvider>
         <WishlistProvider>
           <Router>
+            <ScrollToTop />
             <div className="min-h-screen flex flex-col bg-[#fefdf8] text-brand-secondary">
               <Navbar />
               <main className="flex-grow">
@@ -29,7 +33,9 @@ function App() {
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/account" element={<Account />} />
+                  <Route path="/order/:id" element={<OrderDetail />} />
                   <Route path="/wishlist" element={<Wishlist />} />
+                  <Route path="/search" element={<Search />} />
                 </Routes>
               </main>
 

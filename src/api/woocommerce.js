@@ -1,15 +1,13 @@
 // ============================================================
 // WooCommerce API — Central Configuration
-// All API logic lives here. Change URL/keys in ONE place.
+// All API logic lives here. Keys come from .env (VITE_ prefix).
 // ============================================================
 
-export const WOOCOMMERCE_URL = 'https://seagreen-squid-493803.hostingersite.com';
-const CONSUMER_KEY = 'ck_6e49ac532ef9d2c2f059515f30ef2a0fa60d051b';
-const CONSUMER_SECRET = 'cs_6636d1fc8fa9f6d5767f046460dde2e884cf5d6c';
+export const WOOCOMMERCE_URL = import.meta.env.VITE_WC_URL;
+const CONSUMER_KEY           = import.meta.env.VITE_WC_CONSUMER_KEY;
+const CONSUMER_SECRET        = import.meta.env.VITE_WC_CONSUMER_SECRET;
 
 // ─── Core fetch helper ───────────────────────────────────────
-// BUG FIX: options spread BEFORE headers so our auth headers can never be
-// accidentally overwritten by a caller passing their own headers object.
 async function wooFetch(endpoint, options = {}) {
     const { headers: callerHeaders, ...restOptions } = options;
     const res = await fetch(`${WOOCOMMERCE_URL}/wp-json/wc/v3${endpoint}`, {
@@ -18,7 +16,7 @@ async function wooFetch(endpoint, options = {}) {
             Accept: 'application/json',
             'Content-Type': 'application/json',
             Authorization: `Basic ${btoa(`${CONSUMER_KEY}:${CONSUMER_SECRET}`)}`,
-            ...callerHeaders   // allow callers to ADD headers, not replace
+            ...callerHeaders
         }
     });
 
@@ -30,7 +28,6 @@ async function wooFetch(endpoint, options = {}) {
     }
 
     if (!res.ok) {
-        // Map common WooCommerce error codes to friendly messages
         const CODE_MAP = {
             rest_customer_invalid_email: 'That email address is not valid.',
             'registration-error-email-exists': 'An account already exists with that email. Please sign in.',
@@ -55,9 +52,9 @@ export async function fetchProducts({
     const params = new URLSearchParams({
         page,
         per_page: perPage,
-        orderby,
+        ...(orderby && orderby !== 'relevance' ? { orderby } : {}),
         order,
-        status: 'publish',          // only show published products
+        status: 'publish',
         ...(category ? { category } : {}),
         ...(search ? { search } : {})
     });
@@ -87,7 +84,6 @@ export async function fetchRelatedProducts(categoryId, excludeId) {
         const products = await wooFetch(
             `/products?category=${categoryId}&per_page=5&status=publish`
         );
-        // Filter out the current product
         return products.filter(p => p.id !== parseInt(excludeId)).slice(0, 4);
     } catch (e) {
         console.error('fetchRelatedProducts:', e);
@@ -145,7 +141,6 @@ export async function fetchProductReviews(productId) {
     }
 }
 
-/** Submit a product review — now with try/catch so it never silently crashes */
 export async function submitReview({ productId, reviewerName, reviewerEmail, review, rating }) {
     if (!productId || !reviewerName || !reviewerEmail || !review) {
         throw new Error('Please fill in all review fields.');
@@ -163,7 +158,7 @@ export async function submitReview({ productId, reviewerName, reviewerEmail, rev
         });
     } catch (e) {
         console.error('submitReview:', e);
-        throw e;   // re-throw so the UI can display the error
+        throw e;
     }
 }
 
@@ -181,7 +176,25 @@ export async function createOrder(orderData) {
     }
 }
 
-/** Fetch all orders belonging to a logged-in customer (by customer ID) */
+/**
+ * Update an existing order (status, transaction_id, meta, etc.)
+ * Used after Stripe payment confirmation to set status → 'processing'
+ * and store the Stripe Payment Intent ID as transaction_id.
+ */
+export async function updateOrder(orderId, data) {
+    if (!orderId) throw new Error('Order ID is required.');
+    try {
+        return await wooFetch(`/orders/${orderId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    } catch (e) {
+        console.error('updateOrder:', e);
+        throw e;
+    }
+}
+
+/** Fetch all orders belonging to a logged-in customer */
 export async function fetchCustomerOrders(customerId) {
     if (!customerId) return [];
     try {
@@ -192,7 +205,7 @@ export async function fetchCustomerOrders(customerId) {
     }
 }
 
-/** Fetch a single order by ID (for order tracking / receipt) */
+/** Fetch a single order by ID */
 export async function fetchOrder(orderId) {
     if (!orderId) return null;
     try {
@@ -206,14 +219,12 @@ export async function fetchOrder(orderId) {
 // ─── CUSTOMERS ───────────────────────────────────────────────
 
 export async function registerCustomer(data) {
-    // BUG FIX: wrap in try/catch with friendly error messages
     try {
         return await wooFetch('/customers', {
             method: 'POST',
             body: JSON.stringify(data)
         });
     } catch (e) {
-        // WooCommerce returns "registration-error-email-exists" etc.
         if (e.message?.toLowerCase().includes('email')) {
             throw new Error('An account already exists with that email. Please sign in instead.');
         }
@@ -228,13 +239,11 @@ export async function loginCustomer(email) {
         if (users && users.length > 0) return users[0];
         throw new Error('No account found with that email address. Please register first.');
     } catch (e) {
-        // Don't wrap WooCommerce auth errors with another layer
         if (e.message?.includes('No account found')) throw e;
         throw new Error('Could not sign in. Please check your email and try again.');
     }
 }
 
-/** Update customer profile/address back to WooCommerce */
 export async function updateCustomer(customerId, data) {
     if (!customerId) throw new Error('Not signed in.');
     try {
@@ -256,7 +265,6 @@ export async function validateCoupon(code) {
         const coupons = await wooFetch(`/coupons?code=${encodeURIComponent(code.trim())}`);
         if (coupons && coupons.length > 0) {
             const coupon = coupons[0];
-            // Check expiry
             if (coupon.date_expires && new Date(coupon.date_expires) < new Date()) {
                 throw new Error('This coupon has expired.');
             }

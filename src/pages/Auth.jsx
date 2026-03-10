@@ -99,11 +99,8 @@ export default function Auth() {
                                 className="w-full pl-10 pr-4 py-3 bg-[#f5f8f5] border border-[#1e2520]/10 rounded-md text-sm font-medium text-brand-secondary focus:bg-white focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all" />
                         </div>
 
-                        {isLogin && (
-                            <div className="text-right">
-                                <a href="#" className="text-xs text-brand-primary font-semibold hover:underline">Forgot password?</a>
-                            </div>
-                        )}
+
+
 
                         <button
                             type="submit"

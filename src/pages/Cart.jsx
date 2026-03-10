@@ -66,7 +66,11 @@ export default function Cart() {
                                                 <Minus size={13} />
                                             </button>
                                             <span className="flex-1 text-center font-bold text-sm">{item.quantity}</span>
-                                            <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="px-3 h-full hover:bg-gray-50 hover:text-brand-primary text-gray-500 transition-colors">
+                                            <button 
+                                                disabled={item.stock_quantity !== null && item.stock_quantity !== undefined && item.quantity >= item.stock_quantity}
+                                                onClick={() => updateQuantity(item.id, item.quantity + 1)} 
+                                                className="px-3 h-full hover:bg-gray-50 hover:text-brand-primary text-gray-500 transition-colors disabled:opacity-50"
+                                            >
                                                 <Plus size={13} />
                                             </button>
                                         </div>

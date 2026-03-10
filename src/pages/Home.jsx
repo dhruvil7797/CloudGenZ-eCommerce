@@ -26,6 +26,7 @@ export default function Home() {
     const [loading, setLoading]           = useState(true);
     const [sortLoading, setSortLoading]   = useState(false); // lightweight spinner for sort/filter changes
     const [error, setError]               = useState(null);
+    const [heroProduct, setHeroProduct]   = useState(null);
     const [activeCategory, setActiveCategory] = useState('all');
     const [sortKey, setSortKey]           = useState('featured'); // current sort selection
     const [email, setEmail]               = useState('');
@@ -55,8 +56,16 @@ export default function Home() {
                 ...(category ? { category } : {}),
                 perPage: 20,
             });
-            if (Array.isArray(prodData)) setProducts(prodData);
-            else throw new Error('Invalid response format');
+            if (Array.isArray(prodData)) {
+                setProducts(prodData);
+                setHeroProduct(prev => {
+                    if (prev) return prev; 
+                    const latest = prodData.slice(0, 10);
+                    return latest.length > 0 ? latest[Math.floor(Math.random() * latest.length)] : null;
+                });
+            } else {
+                throw new Error('Invalid response format');
+            }
         } catch (err) {
             setError(err.message);
         } finally {
@@ -150,42 +159,53 @@ export default function Home() {
 
                     {/* Right: product card showcase */}
                     <div className="order-1 lg:order-2 flex justify-center lg:justify-end">
-                        <div className="relative w-full max-w-[420px]">
-                            {/* Main card */}
-                            <div className="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl relative bg-gradient-to-br from-[#2e7d32]/30 to-[#0a3d0a]/50 border border-white/10">
-                                <img
-                                    src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=600&auto=format&fit=crop"
-                                    alt="Featured Collection"
-                                    className="w-full h-full object-cover opacity-80"
-                                />
-                                {/* Overlay badge */}
-                                <div className="absolute top-4 left-4">
-                                    <span className="bg-[#f5c842] text-[#1e2520] text-[10px] font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-full shadow">
-                                        New Arrival
-                                    </span>
+                        {heroProduct ? (
+                            <div className="relative w-full max-w-[420px] group cursor-pointer" onClick={() => { document.getElementById('store')?.scrollIntoView({ behavior: 'smooth' }); }}>
+                                {/* Main card */}
+                                <div className="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl relative bg-gradient-to-br from-[#2e7d32]/30 to-[#0a3d0a]/50 border border-white/10">
+                                    <img
+                                        src={heroProduct.images?.[0]?.src || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=600&auto=format&fit=crop'}
+                                        alt={heroProduct.name || "Featured Product"}
+                                        className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700 ease-out"
+                                    />
+                                    {/* Overlay badge */}
+                                    <div className="absolute top-4 left-4">
+                                        <span className="bg-[#f5c842] text-[#1e2520] text-[10px] font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-full shadow">
+                                            {heroProduct.categories?.[0]?.name || 'New Arrival'}
+                                        </span>
+                                    </div>
+                                    {/* Bottom info strip */}
+                                    <div className="absolute bottom-0 left-0 right-0 bg-[#1e2520]/80 backdrop-blur-md p-5 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                                        <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">Featured</p>
+                                        <p className="text-white font-serif text-xl font-bold line-clamp-1">{heroProduct.name}</p>
+                                        <p className="text-[#f5c842] font-bold text-sm mt-1">Starting at ${heroProduct.price || '0.00'}</p>
+                                    </div>
                                 </div>
-                                {/* Bottom info strip */}
-                                <div className="absolute bottom-0 left-0 right-0 bg-[#1e2520]/80 backdrop-blur-md p-5">
-                                    <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">Featured</p>
-                                    <p className="text-white font-serif text-xl font-bold">Summer Collection 2025</p>
-                                    <p className="text-[#f5c842] font-bold text-sm mt-1">Starting at $24.99</p>
-                                </div>
-                            </div>
 
-                            {/* Floating stat cards */}
-                            <div className="absolute -left-12 top-1/3 bg-white rounded-xl p-4 shadow-xl border border-gray-100 min-w-[130px]">
-                                <div className="flex items-center gap-1 text-[#f5c842] mb-1">
-                                    {[...Array(5)].map((_, i) => <Star key={i} size={11} className="fill-current" />)}
+                                {/* Floating stat cards */}
+                                <div className="absolute -left-12 top-1/3 bg-white rounded-xl p-4 shadow-xl border border-gray-100 min-w-[130px] group-hover:-translate-y-2 transition-transform duration-500 delay-75">
+                                    <div className="flex items-center gap-1 text-[#f5c842] mb-1">
+                                        {[...Array(5)].map((_, i) => (
+                                            <Star key={i} size={11} className={i < Math.round(parseFloat(heroProduct.average_rating) || 5) ? "fill-current" : "text-gray-200"} />
+                                        ))}
+                                    </div>
+                                    <p className="text-brand-secondary font-bold text-sm">{heroProduct.average_rating || '5.0'} / 5.0</p>
+                                    <p className="text-gray-400 text-[10px] font-semibold">{heroProduct.rating_count || Math.floor(Math.random() * 500 + 100)}+ Reviews</p>
                                 </div>
-                                <p className="text-brand-secondary font-bold text-sm">4.9 / 5.0</p>
-                                <p className="text-gray-400 text-[10px] font-semibold">2,400+ Reviews</p>
+                                
+                                {heroProduct.sale_price && heroProduct.regular_price && (
+                                    <div className="absolute -right-8 bottom-1/4 bg-[#f5c842] rounded-xl p-4 shadow-xl min-w-[110px] group-hover:-translate-y-2 transition-transform duration-500 delay-150">
+                                        <Tag size={20} className="text-[#1e2520] mb-1" />
+                                        <p className="text-[#1e2520] font-extrabold text-lg leading-none">
+                                            {Math.round(((heroProduct.regular_price - heroProduct.sale_price) / heroProduct.regular_price) * 100)}%
+                                        </p>
+                                        <p className="text-[#1e2520]/70 text-[10px] font-bold uppercase tracking-wide">Sale Off</p>
+                                    </div>
+                                )}
                             </div>
-                            <div className="absolute -right-8 bottom-1/4 bg-[#f5c842] rounded-xl p-4 shadow-xl min-w-[110px]">
-                                <Tag size={20} className="text-[#1e2520] mb-1" />
-                                <p className="text-[#1e2520] font-extrabold text-lg leading-none">40%</p>
-                                <p className="text-[#1e2520]/70 text-[10px] font-bold uppercase tracking-wide">Sale Off</p>
-                            </div>
-                        </div>
+                        ) : (
+                            <div className="relative w-full max-w-[420px] aspect-[3/4] rounded-2xl bg-white/5 animate-pulse border border-white/10" />
+                        )}
                     </div>
                 </div>
             </section>
@@ -199,58 +219,6 @@ export default function Home() {
                     🚚 Free shipping on orders over $50 &nbsp;·&nbsp; 🎉 New arrivals every week &nbsp;·&nbsp; 💳 Secure & encrypted payments &nbsp;·&nbsp; 🔄 Easy 30-day returns &nbsp;·&nbsp; ⚡ Flash Sale: Extra 15% off with code <strong>SAVE15</strong> &nbsp;·&nbsp; 🌟 Join 10,000+ happy customers
                 </div>
             </div>
-
-            {/* ── CATEGORY CARDS ───────────────────────────────────────── */}
-            {categories.length > 0 && (
-                <section className="py-16 lg:py-24 bg-white">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="text-center mb-12">
-                            <span className="eyebrow">Browse By</span>
-                            <h2 className="font-serif text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold text-brand-secondary">
-                                Shop Categories
-                            </h2>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {/* "All" tile */}
-                            <button
-                                onClick={() => { setActiveCategory('all'); document.getElementById('store')?.scrollIntoView({ behavior: 'smooth' }); }}
-                                className="group relative aspect-square rounded-xl overflow-hidden bg-brand-secondary flex items-end p-5 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/60 to-brand-secondary opacity-80 group-hover:opacity-90 transition-opacity" />
-                                <div className="relative z-10">
-                                    <p className="text-white font-bold text-[10px] uppercase tracking-widest opacity-70 mb-1">Explore</p>
-                                    <p className="text-white font-serif text-xl font-bold">All Products</p>
-                                </div>
-                            </button>
-                            {categories.slice(0, 7).map((cat, i) => {
-                                const catColors = [
-                                    'from-[#2e7d32] to-[#1b5e20]',
-                                    'from-[#1e2520] to-[#2a3528]',
-                                    'from-[#d4a017] to-[#b8860b]',
-                                    'from-[#4a5e4d] to-[#2e3d31]',
-                                    'from-[#1b5e20] to-[#0a3d0a]',
-                                    'from-[#f5c842] to-[#d4a017]',
-                                    'from-[#2a3528] to-[#1e2520]',
-                                ];
-                                return (
-                                    <button
-                                        key={cat.id}
-                                     onClick={() => { handleCategoryChange(String(cat.id)); document.getElementById('store')?.scrollIntoView({ behavior: 'smooth' }); }}
-                                        className="group relative aspect-square rounded-xl overflow-hidden flex items-end p-5 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
-                                    >
-                                        <div className={`absolute inset-0 bg-gradient-to-br ${catColors[i % catColors.length]}`} />
-                                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
-                                        <div className="relative z-10">
-                                            <p className="text-white/70 font-bold text-[10px] uppercase tracking-widest mb-1">Category</p>
-                                            <p className="text-white font-serif text-xl font-bold leading-tight">{cat.name}</p>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </section>
-            )}
 
             {/* ── FEATURES STRIP ───────────────────────────────────────── */}
             <section className="bg-[#f5f8f5] py-10 border-y border-[#1e2520]/05">
@@ -272,7 +240,7 @@ export default function Home() {
             </section>
 
             {/* ── PRODUCT GRID ─────────────────────────────────────────── */}
-            <section className="bg-[#fefdf8] py-20 lg:py-32" id="store">
+            <section className="bg-[#fefdf8] py-10 lg:py-12" id="store">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                     {/* Section header */}
@@ -379,22 +347,28 @@ export default function Home() {
                                                 </span>
                                             </div>
                                         )}
-                                        {/* Sale badge */}
-                                        {product.sale_price && (
-                                            <div className="absolute top-3 right-3">
+                                        {/* Status badges */}
+                                        <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
+                                            {product.stock_status === 'outofstock' && (
+                                                <span className="text-[10px] font-extrabold uppercase bg-red-500 text-white px-2.5 py-1 rounded-full shadow-sm">
+                                                    Out of Stock
+                                                </span>
+                                            )}
+                                            {product.stock_status !== 'outofstock' && product.sale_price && (
                                                 <span className="text-[10px] font-extrabold uppercase bg-[#f5c842] text-brand-secondary px-2.5 py-1 rounded-full shadow-sm">
                                                     Sale
                                                 </span>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
 
                                         {/* Hover overlay */}
                                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end p-4 gap-2">
                                             <button
+                                                disabled={product.stock_status === 'outofstock'}
                                                 onClick={(e) => { e.preventDefault(); addToCart(product); }}
-                                                className="w-full bg-brand-primary text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 shadow-lg hover:bg-[#1b5e20] text-sm"
+                                                className={`w-full font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 shadow-lg text-sm ${product.stock_status === 'outofstock' ? 'bg-gray-800/80 text-white cursor-not-allowed' : 'bg-brand-primary text-white hover:bg-[#1b5e20]'}`}
                                             >
-                                                <ShoppingCart size={16} /> Quick Add
+                                                {product.stock_status === 'outofstock' ? 'Out of Stock' : <><ShoppingCart size={16} /> Quick Add</>}
                                             </button>
                                         </div>
                                     </Link>
@@ -429,8 +403,9 @@ export default function Home() {
                                                     <Heart size={15} className={isWishlisted(product.id) ? 'fill-current' : ''} />
                                                 </button>
                                                 <button
+                                                    disabled={product.stock_status === 'outofstock'}
                                                     onClick={() => addToCart(product)}
-                                                    className="p-1.5 rounded-lg text-brand-primary hover:bg-brand-primary hover:text-white transition-colors"
+                                                    className={`p-1.5 rounded-lg transition-colors ${product.stock_status === 'outofstock' ? 'text-gray-300 cursor-not-allowed' : 'text-brand-primary hover:bg-brand-primary hover:text-white'}`}
                                                 >
                                                     <ShoppingCart size={15} />
                                                 </button>

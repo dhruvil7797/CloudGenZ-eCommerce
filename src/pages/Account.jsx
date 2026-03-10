@@ -146,7 +146,7 @@ export default function Account() {
                                         {orders.map(order => {
                                             const status = STATUS_MAP[order.status] || { label: order.status, color: 'text-gray-700 bg-gray-50 border-gray-200', Icon: Package };
                                             return (
-                                                <div key={order.id} className="p-6 hover:bg-[#fafaf8] transition-colors">
+                                                <Link to={`/order/${order.id}`} key={order.id} className="block p-6 hover:bg-[#f5f8f5] transition-all duration-200 group cursor-pointer">
                                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                                                         <div className="flex items-center gap-4">
                                                             <span className="font-serif text-lg font-bold text-brand-secondary">Order #{order.id}</span>
@@ -154,9 +154,14 @@ export default function Account() {
                                                                 <status.Icon size={11} /> {status.label}
                                                             </span>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <p className="font-serif text-xl font-bold text-[#d4a017]">${order.total}</p>
-                                                            <p className="text-xs text-[#4a5e4d]">{new Date(order.date_created).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                                                        <div className="text-right flex items-center gap-4">
+                                                            <div>
+                                                                <p className="font-serif text-xl font-bold text-[#d4a017]">${order.total}</p>
+                                                                <p className="text-xs text-[#4a5e4d]">{new Date(order.date_created).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                                                            </div>
+                                                            <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                View <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-wrap gap-3">
@@ -169,7 +174,7 @@ export default function Account() {
                                                             <span className="text-xs text-[#4a5e4d] font-medium px-3 py-1.5">+{order.line_items.length - 3} more</span>
                                                         )}
                                                     </div>
-                                                </div>
+                                                </Link>
                                             );
                                         })}
                                     </div>

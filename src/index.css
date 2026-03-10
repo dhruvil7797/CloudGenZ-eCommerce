@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -14,31 +15,17 @@
 }
 
 :root {
-  /* ==============================================================
-     Design 2 ("Virtue") Global Color Scheme
-     ============================================================== */
   --brand-primary: #2e7d32;
-  /* Green */
   --brand-primary-dark: #1b5e20;
   --brand-primary-light: #e8f5e9;
-
   --brand-secondary: #1e2520;
-  /* Charcoal */
-
   --brand-accent: #f5c842;
-  /* Gold */
   --brand-accent-dark: #d4a017;
-
   --brand-bg: #fefdf8;
-  /* Off-White */
   --brand-surface: #ffffff;
-
   --brand-text: #1e2520;
   --brand-muted: #4a5e4d;
 }
-
-/* Custom Web Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 body {
   background-color: var(--brand-bg);

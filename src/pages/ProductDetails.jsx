@@ -57,7 +57,24 @@ export default function ProductDetails() {
     }, [id]);
 
     const handleAddToCart = () => {
-        const cartProduct = selectedVariation ? { ...product, price: selectedVariation.price, images: selectedVariation.image ? [selectedVariation.image] : product.images } : product;
+        const targetStockStatus = selectedVariation ? (selectedVariation.stock_status || product.stock_status) : product.stock_status;
+        if (targetStockStatus === 'outofstock') return;
+
+        let targetStockQuantity = selectedVariation ? selectedVariation.stock_quantity : product.stock_quantity;
+        if (selectedVariation && (selectedVariation.stock_quantity === null || selectedVariation.stock_quantity === undefined)) {
+            targetStockQuantity = product.stock_quantity;
+        }
+
+        const cartProduct = selectedVariation ? { 
+            ...product, 
+            id: selectedVariation.id,
+            parent_id: product.id,
+            name: `${product.name} - ${selectedVariation.attributes.map(a => a.option).join(', ')}`,
+            price: selectedVariation.price, 
+            images: selectedVariation.image ? [selectedVariation.image] : product.images,
+            stock_status: targetStockStatus,
+            stock_quantity: targetStockQuantity
+        } : product;
         addToCart(cartProduct, quantity);
         setAdded(true);
         setTimeout(() => setAdded(false), 2500);
@@ -128,7 +145,11 @@ export default function ProductDetails() {
                     {/* Info */}
                     <div className="flex flex-col justify-center">
                         <span className="eyebrow">{product.categories?.[0]?.name || 'New Arrival'}</span>
-                        <h1 className="font-serif text-[clamp(1.8rem,3.5vw,3rem)] font-bold text-brand-secondary leading-tight mb-4">{product.name}</h1>
+                        <h1 className={`font-serif font-bold text-brand-secondary leading-tight mb-4 ${
+                            product.name.length > 50 ? 'text-[clamp(1.5rem,2.5vw,2rem)]' : 
+                            product.name.length > 30 ? 'text-[clamp(1.65rem,3vw,2.5rem)]' : 
+                            'text-[clamp(1.8rem,3.5vw,3rem)]'
+                        }`}>{product.name}</h1>
 
                         <div className="flex items-center gap-3 mb-6">
                             <div className="flex gap-0.5 text-[#f5c842]">
@@ -166,20 +187,49 @@ export default function ProductDetails() {
                             <div className="text-sm text-[#4a5e4d] leading-relaxed mb-6 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: product.short_description }} />
                         )}
 
-                        {/* Quantity + Cart */}
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="flex items-center border-2 border-[#1e2520]/15 rounded-md h-14 w-32 bg-white">
-                                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-3 h-full hover:bg-gray-50 hover:text-brand-primary text-brand-secondary transition-colors"><Minus size={15} /></button>
-                                <span className="flex-1 text-center font-bold">{quantity}</span>
-                                <button onClick={() => setQuantity(quantity + 1)} className="px-3 h-full hover:bg-gray-50 hover:text-brand-primary text-brand-secondary transition-colors"><Plus size={15} /></button>
-                            </div>
-                            <button
-                                onClick={handleAddToCart}
-                                className={`flex-1 h-14 rounded-md font-bold text-[0.95rem] flex items-center justify-center gap-2 transition-all duration-300 shadow-md active:scale-95 ${added ? 'bg-[#1b5e20] text-white' : 'bg-brand-primary text-white hover:bg-[#1b5e20] hover:shadow-lg hover:-translate-y-0.5'}`}
-                            >
-                                {added ? <><CheckCircle2 size={20} /> Added!</> : <><ShoppingCart size={17} /> Add to Cart — ${(parseFloat(displayPrice || 0) * quantity).toFixed(2)}</>}
-                            </button>
-                        </div>
+                        {(() => {
+                            const isOutOfStock = selectedVariation 
+                                ? (selectedVariation.stock_status === 'outofstock' || product.stock_status === 'outofstock')
+                                : product.stock_status === 'outofstock';
+                            
+                            let maxStock = null;
+                            if (selectedVariation) {
+                                if (selectedVariation.stock_quantity !== null && selectedVariation.stock_quantity !== undefined) maxStock = selectedVariation.stock_quantity;
+                                else if (product.stock_quantity !== null && product.stock_quantity !== undefined) maxStock = product.stock_quantity;
+                            } else if (product.stock_quantity !== null && product.stock_quantity !== undefined) {
+                                maxStock = product.stock_quantity;
+                            }
+
+                            return (
+                                <>
+                                    {isOutOfStock && <div className="mb-4 text-red-600 font-bold block">Currently Out of Stock</div>}
+                                    {maxStock !== null && maxStock > 0 && !isOutOfStock && <div className="mb-2 text-[#4a5e4d] text-sm"><span className="font-bold">{maxStock}</span> in stock</div>}
+                                    
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="flex items-center border-2 border-[#1e2520]/15 rounded-md h-14 w-32 bg-white">
+                                            <button 
+                                                disabled={isOutOfStock}
+                                                onClick={() => setQuantity(Math.max(1, quantity - 1))} 
+                                                className="px-3 h-full hover:bg-gray-50 hover:text-brand-primary text-brand-secondary transition-colors disabled:opacity-50"
+                                            ><Minus size={15} /></button>
+                                            <span className="flex-1 text-center font-bold">{quantity}</span>
+                                            <button 
+                                                disabled={isOutOfStock || (maxStock !== null && quantity >= maxStock)}
+                                                onClick={() => setQuantity(maxStock !== null ? Math.min(maxStock, quantity + 1) : quantity + 1)} 
+                                                className="px-3 h-full hover:bg-gray-50 hover:text-brand-primary text-brand-secondary transition-colors disabled:opacity-50"
+                                            ><Plus size={15} /></button>
+                                        </div>
+                                        <button
+                                            disabled={isOutOfStock}
+                                            onClick={handleAddToCart}
+                                            className={`flex-1 h-14 rounded-md font-bold text-[0.95rem] flex items-center justify-center gap-2 transition-all duration-300 shadow-md ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : added ? 'bg-[#1b5e20] text-white active:scale-95' : 'bg-brand-primary text-white hover:bg-[#1b5e20] hover:shadow-lg hover:-translate-y-0.5 active:scale-95'}`}
+                                        >
+                                            {isOutOfStock ? 'Out of Stock' : added ? <><CheckCircle2 size={20} /> Added!</> : <><ShoppingCart size={17} /> Add to Cart — ${(parseFloat(displayPrice || 0) * quantity).toFixed(2)}</>}
+                                        </button>
+                                    </div>
+                                </>
+                            );
+                        })()}
 
                         <div className="flex items-center gap-2 text-sm text-[#4a5e4d] font-medium mb-6">
                             <CheckCircle2 size={14} className="text-brand-primary shrink-0" />

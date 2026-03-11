@@ -20,8 +20,8 @@ export default function Auth() {
         setError('');
         try {
             if (isLogin) {
-                if (!formData.email) throw new Error("Please enter your email");
-                const userProfile = await loginCustomer(formData.email);
+                if (!formData.email || !formData.password) throw new Error("Please enter your email and password");
+                const userProfile = await loginCustomer(formData.email, formData.password);
                 login(userProfile);
                 navigate('/');
             } else {

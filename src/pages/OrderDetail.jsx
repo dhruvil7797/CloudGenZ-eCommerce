@@ -157,6 +157,14 @@ export default function OrderDetail() {
                                         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                                     })}
                                 </p>
+                                {order.status === 'pending' && (
+                                    <Link
+                                        to={`/checkout?order=${order.id}`}
+                                        className="mt-3 inline-block px-5 py-2 bg-brand-primary text-white text-sm font-bold rounded hover:bg-[#1b5e20] transition-colors"
+                                    >
+                                        Pay Now
+                                    </Link>
+                                )}
                             </div>
                         </div>
 
@@ -248,7 +256,7 @@ export default function OrderDetail() {
                             <div className="mt-6 pt-4 border-t border-[#1e2520]/10 space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[#4a5e4d]">Subtotal</span>
-                                    <span className="font-semibold">${parseFloat(order.total - order.total_tax - (order.shipping_total || 0)).toFixed(2)}</span>
+                                    <span className="font-semibold">${(parseFloat(order.total) + parseFloat(order.discount_total || 0) - parseFloat(order.total_tax) - parseFloat(order.shipping_total || 0)).toFixed(2)}</span>
                                 </div>
                                 {parseFloat(order.shipping_total) > 0 && (
                                     <div className="flex justify-between text-sm">
@@ -275,37 +283,25 @@ export default function OrderDetail() {
                             </div>
                         </InfoCard>
 
-                        {/* PAYMENT INFO */}
-                        <InfoCard icon={CreditCard} title="Payment Information">
-                            <DetailRow label="Method" value={order.payment_method_title || order.payment_method || 'N/A'} />
-                            <DetailRow label="Transaction ID" value={order.transaction_id} mono />
-                            {order.date_paid && (
-                                <DetailRow label="Paid On" value={new Date(order.date_paid).toLocaleDateString('en-US', {
-                                    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                                })} />
-                            )}
-                            {/* Stripe Custom Fields */}
-                            {getMeta('Stripe Payment ID') && (
-                                <>
-                                    <div className="mt-4 mb-3 flex items-center gap-2">
-                                        <ShieldCheck size={14} className="text-brand-primary" />
-                                        <span className="text-xs font-bold uppercase tracking-widest text-brand-primary">Stripe Details</span>
-                                    </div>
-                                    <DetailRow label="Payment ID" value={getMeta('Stripe Payment ID')} mono />
-                                    <DetailRow label="Card Brand" value={(getMeta('Stripe Card Brand') || '').toUpperCase()} />
-                                    <DetailRow label="Card Last 4" value={getMeta('Stripe Card Last 4') ? `•••• ${getMeta('Stripe Card Last 4')}` : null} />
-                                    <DetailRow label="Payment Type" value={getMeta('Stripe Payment Type')} />
-                                    {getMeta('Payment Reference') && (
-                                        <DetailRow label="Reference" value={getMeta('Payment Reference')} mono />
-                                    )}
-                                    {getMeta('Payment Date') && (
-                                        <DetailRow label="Payment Date" value={new Date(getMeta('Payment Date')).toLocaleDateString('en-US', {
-                                            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                                        })} />
-                                    )}
-                                </>
-                            )}
-                        </InfoCard>
+                        {/* PAYMENT INFO - Hide if order is pending (no payment yet) */}
+                        {order.status !== 'pending' && (
+                            <InfoCard icon={CreditCard} title="Payment Information">
+                                <DetailRow label="Method" value={order.payment_method_title || order.payment_method || 'N/A'} />
+                                <DetailRow label="Transaction ID" value={order.transaction_id} mono />
+                                {order.date_paid && (
+                                    <DetailRow label="Paid On" value={new Date(order.date_paid).toLocaleDateString('en-US', {
+                                        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                    })} />
+                                )}
+                                {/* Stripe Custom Fields */}
+                                {getMeta('Stripe Payment ID') && (
+                                    <>
+                                        <DetailRow label="Card Brand" value={(getMeta('Stripe Card Brand') || '').toUpperCase()} />
+                                        <DetailRow label="Card Last 4" value={getMeta('Stripe Card Last 4') ? `•••• ${getMeta('Stripe Card Last 4')}` : null} />
+                                    </>
+                                )}
+                            </InfoCard>
+                        )}
                     </div>
 
                     {/* ─── RIGHT: Billing, Shipping, Notes ──── */}
@@ -402,33 +398,6 @@ export default function OrderDetail() {
                                 </div>
                             </InfoCard>
                         )}
-
-                        {/* QUICK INFO */}
-                        <div className="bg-brand-secondary rounded-xl p-5 text-white space-y-3">
-                            <h4 className="text-xs font-bold uppercase tracking-widest text-white/40">Quick Info</h4>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-white/60">Order ID</span>
-                                <span className="font-bold font-mono">#{order.id}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-white/60">Order Key</span>
-                                <span className="font-mono text-xs text-white/80 truncate max-w-[150px]">{order.order_key}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-white/60">Currency</span>
-                                <span className="font-bold">{order.currency}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-white/60">Created Via</span>
-                                <span className="font-medium capitalize">{order.created_via}</span>
-                            </div>
-                            {order.coupon_lines?.length > 0 && (
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-white/60">Coupon</span>
-                                    <span className="font-bold text-[#f5c842]">{order.coupon_lines[0].code}</span>
-                                </div>
-                            )}
-                        </div>
 
                         {/* ACTIONS */}
                         <div className="flex flex-col gap-2">

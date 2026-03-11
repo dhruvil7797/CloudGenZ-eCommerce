@@ -13,6 +13,24 @@ const STATUS_MAP = {
     shipped: { label: 'Shipped', color: 'text-brand-primary bg-[#e8f5e9] border-[#2e7d32]/20', Icon: Truck },
 };
 
+const CANADA_PROVINCES = [
+    { code: 'AB', name: 'Alberta' },
+    { code: 'BC', name: 'British Columbia' },
+    { code: 'MB', name: 'Manitoba' },
+    { code: 'NB', name: 'New Brunswick' },
+    { code: 'NL', name: 'Newfoundland and Labrador' },
+    { code: 'NS', name: 'Nova Scotia' },
+    { code: 'ON', name: 'Ontario' },
+    { code: 'PE', name: 'Prince Edward Island' },
+    { code: 'QC', name: 'Quebec' },
+    { code: 'SK', name: 'Saskatchewan' },
+    { code: 'NT', name: 'Northwest Territories' },
+    { code: 'NU', name: 'Nunavut' },
+    { code: 'YT', name: 'Yukon' }
+];
+
+
+
 const tabs = [
     { id: 'orders', label: 'My Orders', Icon: Package },
     { id: 'profile', label: 'My Profile', Icon: User },
@@ -39,7 +57,7 @@ export default function Account() {
         city: user?.billing?.city || '',
         state: user?.billing?.state || '',
         postcode: user?.billing?.postcode || '',
-        country: user?.billing?.country || 'US'
+        country: user?.billing?.country || 'CA'
     });
 
     useEffect(() => {
@@ -101,9 +119,6 @@ export default function Account() {
                             {user.first_name ? `Welcome back, ${user.first_name}.` : 'My Account'}
                         </h1>
                     </div>
-                    <button onClick={() => { logout(); navigate('/'); }} className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-red-600 transition-colors border border-gray-200 rounded-lg px-4 py-2 hover:border-red-200">
-                        <LogOut size={15} /> Sign Out
-                    </button>
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-8">
@@ -162,17 +177,18 @@ export default function Account() {
                                                             <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 View <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
                                                             </div>
+                                                            {order.status === 'pending' && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        navigate(`/checkout?order=${order.id}`);
+                                                                    }}
+                                                                    className="px-3 py-1.5 bg-brand-primary text-white text-xs font-bold rounded-md hover:bg-[#1b5e20] transition-colors whitespace-nowrap"
+                                                                >
+                                                                    Pay Now
+                                                                </button>
+                                                            )}
                                                         </div>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-3">
-                                                        {order.line_items?.slice(0, 3).map(item => (
-                                                            <span key={item.id} className="text-xs bg-[#f5f8f5] text-brand-secondary font-medium px-3 py-1.5 rounded-full border border-[#1e2520]/10">
-                                                                {item.name} × {item.quantity}
-                                                            </span>
-                                                        ))}
-                                                        {order.line_items?.length > 3 && (
-                                                            <span className="text-xs text-[#4a5e4d] font-medium px-3 py-1.5">+{order.line_items.length - 3} more</span>
-                                                        )}
                                                     </div>
                                                 </Link>
                                             );
@@ -224,12 +240,31 @@ export default function Account() {
                                     ].map(({ label, key, full }) => (
                                         <div key={key} className={full ? 'sm:col-span-2' : ''}>
                                             <label className="block text-xs font-bold uppercase tracking-widest text-[#4a5e4d] mb-2">{label}</label>
-                                            <input
-                                                type="text"
-                                                value={addressData[key]}
-                                                onChange={e => setAddressData({ ...addressData, [key]: e.target.value })}
-                                                className="w-full border border-[#1e2520]/15 rounded-md px-4 py-3 bg-[#f5f8f5] focus:bg-white focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all text-brand-secondary font-medium text-sm"
-                                            />
+                                            {key === 'country' ? (
+                                                <select
+                                                    disabled
+                                                    value="CA"
+                                                    className="w-full border border-[#1e2520]/15 rounded-md px-4 py-3 bg-gray-100 text-gray-500 font-medium text-sm appearance-none cursor-not-allowed"
+                                                >
+                                                    <option value="CA">Canada</option>
+                                                </select>
+                                            ) : key === 'state' ? (
+                                                <select
+                                                    value={addressData[key]}
+                                                    onChange={e => setAddressData({ ...addressData, [key]: e.target.value })}
+                                                    className="w-full border border-[#1e2520]/15 rounded-md px-4 py-3 bg-[#f5f8f5] focus:bg-white focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all text-brand-secondary font-medium text-sm appearance-none cursor-pointer"
+                                                >
+                                                    <option value="">Select Province</option>
+                                                    {CANADA_PROVINCES.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+                                                </select>
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    value={addressData[key]}
+                                                    onChange={e => setAddressData({ ...addressData, [key]: e.target.value })}
+                                                    className="w-full border border-[#1e2520]/15 rounded-md px-4 py-3 bg-[#f5f8f5] focus:bg-white focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all text-brand-secondary font-medium text-sm"
+                                                />
+                                            )}
                                         </div>
                                     ))}
                                 </div>

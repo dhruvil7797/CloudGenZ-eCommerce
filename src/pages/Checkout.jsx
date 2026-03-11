@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { createOrder, updateOrder, validateCoupon } from '../api/woocommerce';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2, AlertCircle, Tag, X, CreditCard, Lock, ShieldCheck } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -52,67 +52,28 @@ const CARD_NUMBER_OPTIONS = {
 const CARD_EXPIRY_OPTIONS = { ...ELEMENT_STYLE };
 const CARD_CVC_OPTIONS = { ...ELEMENT_STYLE };
 
-// ─── Country list (ISO 3166-1 alpha-2) ───────────────────────
-const COUNTRIES = [
-    { code: 'US', name: 'United States' },
-    { code: 'CA', name: 'Canada' },
-    { code: 'GB', name: 'United Kingdom' },
-    { code: 'AU', name: 'Australia' },
-    { code: 'IN', name: 'India' },
-    { code: 'DE', name: 'Germany' },
-    { code: 'FR', name: 'France' },
-    { code: 'IT', name: 'Italy' },
-    { code: 'ES', name: 'Spain' },
-    { code: 'NL', name: 'Netherlands' },
-    { code: 'BE', name: 'Belgium' },
-    { code: 'AT', name: 'Austria' },
-    { code: 'CH', name: 'Switzerland' },
-    { code: 'SE', name: 'Sweden' },
-    { code: 'NO', name: 'Norway' },
-    { code: 'DK', name: 'Denmark' },
-    { code: 'FI', name: 'Finland' },
-    { code: 'IE', name: 'Ireland' },
-    { code: 'NZ', name: 'New Zealand' },
-    { code: 'SG', name: 'Singapore' },
-    { code: 'HK', name: 'Hong Kong' },
-    { code: 'JP', name: 'Japan' },
-    { code: 'KR', name: 'South Korea' },
-    { code: 'CN', name: 'China' },
-    { code: 'BR', name: 'Brazil' },
-    { code: 'MX', name: 'Mexico' },
-    { code: 'AR', name: 'Argentina' },
-    { code: 'CL', name: 'Chile' },
-    { code: 'CO', name: 'Colombia' },
-    { code: 'ZA', name: 'South Africa' },
-    { code: 'AE', name: 'United Arab Emirates' },
-    { code: 'SA', name: 'Saudi Arabia' },
-    { code: 'EG', name: 'Egypt' },
-    { code: 'NG', name: 'Nigeria' },
-    { code: 'KE', name: 'Kenya' },
-    { code: 'PK', name: 'Pakistan' },
-    { code: 'BD', name: 'Bangladesh' },
-    { code: 'LK', name: 'Sri Lanka' },
-    { code: 'MY', name: 'Malaysia' },
-    { code: 'TH', name: 'Thailand' },
-    { code: 'PH', name: 'Philippines' },
-    { code: 'ID', name: 'Indonesia' },
-    { code: 'VN', name: 'Vietnam' },
-    { code: 'PL', name: 'Poland' },
-    { code: 'CZ', name: 'Czech Republic' },
-    { code: 'RO', name: 'Romania' },
-    { code: 'HU', name: 'Hungary' },
-    { code: 'PT', name: 'Portugal' },
-    { code: 'GR', name: 'Greece' },
-    { code: 'TR', name: 'Turkey' },
-    { code: 'IL', name: 'Israel' },
-    { code: 'RU', name: 'Russia' },
-    { code: 'UA', name: 'Ukraine' },
-].sort((a, b) => a.name.localeCompare(b.name));
+// ─── Country locked to Canada ───────────────────────
+
+const CANADA_PROVINCES = [
+    { code: 'AB', name: 'Alberta' },
+    { code: 'BC', name: 'British Columbia' },
+    { code: 'MB', name: 'Manitoba' },
+    { code: 'NB', name: 'New Brunswick' },
+    { code: 'NL', name: 'Newfoundland and Labrador' },
+    { code: 'NS', name: 'Nova Scotia' },
+    { code: 'NT', name: 'Northwest Territories' },
+    { code: 'NU', name: 'Nunavut' },
+    { code: 'ON', name: 'Ontario' },
+    { code: 'PE', name: 'Prince Edward Island' },
+    { code: 'QC', name: 'Quebec' },
+    { code: 'SK', name: 'Saskatchewan' },
+    { code: 'YT', name: 'Yukon' }
+];
 
 // ═══════════════════════════════════════════════════════════════
 // StripePaymentForm — inner component that has access to Stripe
 // ═══════════════════════════════════════════════════════════════
-function StripePaymentForm({ orderData, pendingOrder, finalTotal, onSuccess, onError, onBack }) {
+function StripePaymentForm({ orderData, pendingOrder, finalTotal, coupon, couponCode, onSuccess, onError, onBack }) {
     const stripe = useStripe();
     const elements = useElements();
     const [paying, setPaying] = useState(false);
@@ -169,7 +130,12 @@ function StripePaymentForm({ orderData, pendingOrder, finalTotal, onSuccess, onE
             // Generate a reference ID for tracking
             const orderReference = `ORD-${pendingOrder.id}-${Date.now()}`;
             
-            const updatedOrder = await updateOrder(pendingOrder.id, {
+            // Calculate discount amount if coupon is applied
+            const discountAmount = coupon ? (coupon.discount_type === 'percent' ? 
+                (parseFloat(pendingOrder.total) * parseFloat(coupon.amount)) / 100 : 
+                parseFloat(coupon.amount)) : 0;
+            
+            const updateData = {
                 status: 'processing',
                 set_paid: true,
                 transaction_id: paymentMethod.id, // This shows in WooCommerce as transaction ID
@@ -183,7 +149,16 @@ function StripePaymentForm({ orderData, pendingOrder, finalTotal, onSuccess, onE
                     { key: 'Payment Reference', value: orderReference },
                     { key: 'Payment Date', value: new Date().toISOString() },
                 ],
-            });
+            };
+
+            // Add coupon information if applied
+            if (coupon && couponCode) {
+                updateData.coupon_lines = [{ code: couponCode }];
+                updateData.discount_total = discountAmount.toFixed(2);
+                updateData.total = (parseFloat(pendingOrder.total) - discountAmount).toFixed(2);
+            }
+            
+            const updatedOrder = await updateOrder(pendingOrder.id, updateData);
 
             onSuccess(updatedOrder);
 
@@ -312,6 +287,7 @@ export default function Checkout() {
     const { cart, getCartTotal, clearCart } = useCart();
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Flow steps: 'billing' → 'payment' → 'success'
     const [step, setStep] = useState('billing');
@@ -320,6 +296,7 @@ export default function Checkout() {
     const [completedOrder, setCompletedOrder] = useState(null);
     const [pendingOrder, setPendingOrder] = useState(null);
     const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+    const [isInitializingPayment, setIsInitializingPayment] = useState(false);
 
     // Coupon
     const [couponCode, setCouponCode] = useState('');
@@ -337,18 +314,35 @@ export default function Checkout() {
         city: user?.billing?.city || '',
         state: user?.billing?.state || '',
         postcode: user?.billing?.postcode || '',
-        country: user?.billing?.country || 'US'
+        country: user?.billing?.country || 'CA'
     });
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+    // Calculate total from either cart or pending order
+    const getCurrentTotal = () => {
+        if (pendingOrder && pendingOrder.line_items) {
+            // IMPORTANT: Calculate from line item SUBTOTALS (not totals) to avoid double-discount
+            // When a coupon is applied during order creation, WooCommerce applies the discount
+            // to line_items[].total, but subtotal contains the original amount before discounts
+            return pendingOrder.line_items.reduce((sum, item) => {
+                // Use subtotal which contains the original amount before any line-level discounts
+                const itemSubtotal = parseFloat(item.subtotal || item.price * item.quantity || 0);
+                return sum + itemSubtotal;
+            }, 0);
+        }
+        // Calculate from cart
+        return getCartTotal();
+    };
+
     const getDiscount = () => {
         if (!coupon) return 0;
-        if (coupon.discount_type === 'percent') return (getCartTotal() * parseFloat(coupon.amount)) / 100;
+        const total = getCurrentTotal();
+        if (coupon.discount_type === 'percent') return (total * parseFloat(coupon.amount)) / 100;
         return parseFloat(coupon.amount) || 0;
     };
 
-    const getFinalTotal = () => Math.max(0, getCartTotal() - getDiscount());
+    const getFinalTotal = () => Math.max(0, getCurrentTotal() - getDiscount());
 
     const handleCoupon = async () => {
         if (!couponCode.trim()) return;
@@ -363,6 +357,51 @@ export default function Checkout() {
             setCouponLoading(false);
         }
     };
+
+    // ─── Initialize from existing pending order if `?order=ID` exists ──────────
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        const orderId = queryParams.get('order');
+        if (orderId && !pendingOrder) {
+            const loadPendingOrder = async () => {
+                setIsInitializingPayment(true);
+                try {
+                    console.log('Loading pending order:', orderId);
+                    // Import fetchOrder at top of file
+                    const { fetchOrder } = await import('../api/woocommerce.js');
+                    const orderData = await fetchOrder(orderId);
+                    
+                    console.log('Order data received:', orderData);
+                    
+                    if (!orderData) throw new Error("Order not found");
+                    if (orderData.status !== 'pending') throw new Error(`This order is not pending payment. Status: ${orderData.status}`);
+                    
+                    // Populate billing data so we have it for Stripe or editing
+                    setFormData({
+                        firstName: orderData.billing?.first_name || '',
+                        lastName: orderData.billing?.last_name || '',
+                        email: orderData.billing?.email || '',
+                        phone: orderData.billing?.phone || '',
+                        address1: orderData.billing?.address_1 || '',
+                        city: orderData.billing?.city || '',
+                        state: orderData.billing?.state || '',
+                        postcode: orderData.billing?.postcode || '',
+                        country: orderData.billing?.country || 'CA'
+                    });
+                    
+                    setPendingOrder(orderData);
+                    setStep('payment');
+                } catch (err) {
+                    console.error('Error loading pending order:', err);
+                    setError(err.message || 'Failed to load pending order.');
+                    setStep('billing'); // fall back to regular checkout
+                } finally {
+                    setIsInitializingPayment(false);
+                }
+            };
+            loadPendingOrder();
+        }
+    }, [location.search, pendingOrder]);
 
     // ─── Billing form submit → create pending order → proceed to payment ────────────
     const handleBillingSubmit = async (e) => {
@@ -474,9 +513,21 @@ export default function Checkout() {
     }
 
     // ══════════════════════════════════════════════════════════
+    // RENDER: Loading existing order
+    // ══════════════════════════════════════════════════════════
+    if (isInitializingPayment) {
+        return (
+            <div className="max-w-7xl mx-auto px-4 py-24 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-primary mx-auto mb-4"></div>
+                <h2 className="font-serif text-2xl font-bold text-brand-secondary mb-4">Loading Payment Details...</h2>
+            </div>
+        );
+    }
+
+    // ══════════════════════════════════════════════════════════
     // RENDER: Empty Cart
     // ══════════════════════════════════════════════════════════
-    if (cart.length === 0 && step !== 'success') {
+    if (cart.length === 0 && step !== 'success' && !pendingOrder) {
         return (
             <div className="max-w-7xl mx-auto px-4 py-24 text-center">
                 <h2 className="font-serif text-3xl font-bold text-brand-secondary mb-4">Your cart is empty</h2>
@@ -491,9 +542,15 @@ export default function Checkout() {
     return (
         <div className="bg-[#fefdf8] min-h-screen">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
-                <Link to="/cart" className="inline-flex items-center text-sm font-semibold text-[#4a5e4d] hover:text-brand-primary transition-colors mb-8 group">
-                    <ArrowLeft size={14} className="mr-2 group-hover:-translate-x-1 transition-transform" /> Return to Cart
-                </Link>
+                {!pendingOrder ? (
+                    <Link to="/cart" className="inline-flex items-center text-sm font-semibold text-[#4a5e4d] hover:text-brand-primary transition-colors mb-8 group">
+                        <ArrowLeft size={14} className="mr-2 group-hover:-translate-x-1 transition-transform" /> Return to Cart
+                    </Link>
+                ) : (
+                    <Link to="/account" className="inline-flex items-center text-sm font-semibold text-[#4a5e4d] hover:text-brand-primary transition-colors mb-8 group">
+                        <ArrowLeft size={14} className="mr-2 group-hover:-translate-x-1 transition-transform" /> Back to My Orders
+                    </Link>
+                )}
 
                 {/* ── Step indicator bar ──────────────────────── */}
                 <div className="flex items-center gap-4 mb-10">
@@ -541,23 +598,33 @@ export default function Checkout() {
                                     <InputField label="Street Address" name="address1" value={formData.address1} onChange={handleChange} required />
                                     <div className="grid grid-cols-2 gap-6">
                                         <InputField label="City" name="city" value={formData.city} onChange={handleChange} required />
-                                        <InputField label="State / Province" name="state" value={formData.state} onChange={handleChange} required />
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-widest text-[#4a5e4d] mb-2">State / Province</label>
+                                            <select
+                                                required
+                                                name="state"
+                                                value={formData.state}
+                                                onChange={handleChange}
+                                                className="w-full border border-[#1e2520]/15 rounded-md px-4 py-3 bg-[#f5f8f5] focus:bg-white focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all text-brand-secondary font-medium text-sm appearance-none cursor-pointer"
+                                            >
+                                                <option value="">Select Province</option>
+                                                {CANADA_PROVINCES.map(p => (
+                                                    <option key={p.code} value={p.code}>{p.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-6">
                                         <InputField label="Postcode" name="postcode" value={formData.postcode} onChange={handleChange} required />
                                         <div>
                                             <label className="block text-xs font-bold uppercase tracking-widest text-[#4a5e4d] mb-2">Country</label>
                                             <select
-                                                required
+                                                disabled
                                                 name="country"
-                                                value={formData.country}
-                                                onChange={handleChange}
-                                                className="w-full border border-[#1e2520]/15 rounded-md px-4 py-3 bg-[#f5f8f5] focus:bg-white focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all text-brand-secondary font-medium text-sm appearance-none cursor-pointer"
+                                                value="CA"
+                                                className="w-full border border-[#1e2520]/15 rounded-md px-4 py-3 bg-gray-100 text-gray-500 font-medium text-sm appearance-none cursor-not-allowed"
                                             >
-                                                <option value="">Select Country</option>
-                                                {COUNTRIES.map(c => (
-                                                    <option key={c.code} value={c.code}>{c.name}</option>
-                                                ))}
+                                                <option value="CA">Canada</option>
                                             </select>
                                         </div>
                                     </div>
@@ -592,6 +659,8 @@ export default function Checkout() {
                                     orderData={buildOrderData()}
                                     pendingOrder={pendingOrder}
                                     finalTotal={getFinalTotal().toFixed(2)}
+                                    coupon={coupon}
+                                    couponCode={couponCode}
                                     onSuccess={handlePaymentSuccess}
                                     onError={(msg) => setError(msg)}
                                     onBack={() => { setStep('billing'); setError(null); }}
@@ -607,16 +676,25 @@ export default function Checkout() {
                         <div className="bg-brand-secondary rounded-xl p-6 text-white mb-4">
                             {/* Cart items */}
                             <div className="space-y-4 max-h-60 overflow-y-auto pr-1 mb-6">
-                                {cart.map((item) => (
+                                {/* If we are paying a pending order, show ITS items. Otherwise show cart items. */}
+                                {(pendingOrder ? pendingOrder.line_items : cart).map((item) => (
                                     <div key={item.id} className="flex justify-between items-center gap-4">
                                         <div className="h-12 w-12 rounded-lg overflow-hidden bg-gray-700 shrink-0">
-                                            <img src={item.images?.[0]?.src} alt={item.name} className="h-full w-full object-cover" />
+                                            {item.image?.src || item.images?.[0]?.src ? (
+                                                <img src={item.image?.src || item.images?.[0]?.src} alt={item.name} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-white/50 bg-white/5">
+                                                    <CreditCard size={16} />
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <span className="font-semibold text-sm block leading-tight line-clamp-1">{item.name}</span>
                                             <span className="text-white/50 text-xs mt-0.5 block">Qty: {item.quantity}</span>
                                         </div>
-                                        <span className="font-serif font-bold text-[#f5c842] shrink-0">${(item.price * item.quantity).toFixed(2)}</span>
+                                        <span className="font-serif font-bold text-[#f5c842] shrink-0">
+                                            ${(item.total ? parseFloat(item.total) : (item.price * item.quantity)).toFixed(2)}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -655,7 +733,7 @@ export default function Checkout() {
                             {/* Totals */}
                             <div className="border-t border-white/10 pt-5 space-y-3">
                                 <div className="flex justify-between text-white/70 text-sm font-medium">
-                                    <span>Subtotal</span><span>${getCartTotal().toFixed(2)}</span>
+                                    <span>Subtotal</span><span>${getCurrentTotal().toFixed(2)}</span>
                                 </div>
                                 {coupon && (
                                     <div className="flex justify-between text-[#f5c842] text-sm font-medium">

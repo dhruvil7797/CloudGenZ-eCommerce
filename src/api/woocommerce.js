@@ -198,7 +198,11 @@ export async function updateOrder(orderId, data) {
 export async function fetchCustomerOrders(customerId) {
     if (!customerId) return [];
     try {
-        return await wooFetch(`/orders?customer=${customerId}&per_page=20&orderby=date&order=desc`);
+        console.log('Fetching orders for customer:', customerId);
+        // Include all order statuses including pending
+        const orders = await wooFetch(`/orders?customer_id=${customerId}&per_page=20&orderby=date&order=desc&status=any`);
+        console.log('Orders received:', orders);
+        return orders;
     } catch (e) {
         console.error('fetchCustomerOrders:', e);
         return [];
@@ -232,15 +236,21 @@ export async function registerCustomer(data) {
     }
 }
 
-export async function loginCustomer(email) {
+export async function loginCustomer(email, password) {
     if (!email) throw new Error('Please enter your email address.');
     try {
+        // NOTE: The official WooCommerce REST API relies on admin API Keys 
+        // and does NOT have a built-in endpoint to verify a customer's password.
+        // For a true headless app, you would need a plugin like Headless Authentication or JWT Auth.
+        // For development/demo purposes, we are simulating login by just checking if the email exists.
+        
         const users = await wooFetch(`/customers?email=${encodeURIComponent(email.trim())}`);
         if (users && users.length > 0) return users[0];
+        
         throw new Error('No account found with that email address. Please register first.');
     } catch (e) {
         if (e.message?.includes('No account found')) throw e;
-        throw new Error('Could not sign in. Please check your email and try again.');
+        throw new Error('Could not sign in. Please check your credentials and try again.');
     }
 }
 

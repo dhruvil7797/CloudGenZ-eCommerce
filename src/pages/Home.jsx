@@ -183,23 +183,23 @@ export default function Home() {
                                 </div>
 
                                 {/* Floating stat cards */}
-                                <div className="absolute -left-12 top-1/3 bg-white rounded-xl p-4 shadow-xl border border-gray-100 min-w-[130px] group-hover:-translate-y-2 transition-transform duration-500 delay-75">
+                                <div className="absolute left-2 md:-left-12 top-1/3 bg-white rounded-xl p-3 md:p-4 shadow-xl border border-gray-100 min-w-[120px] md:min-w-[130px] group-hover:-translate-y-2 transition-transform duration-500 delay-75 z-10">
                                     <div className="flex items-center gap-1 text-[#f5c842] mb-1">
                                         {[...Array(5)].map((_, i) => (
                                             <Star key={i} size={11} className={i < Math.round(parseFloat(heroProduct.average_rating) || 5) ? "fill-current" : "text-gray-200"} />
                                         ))}
                                     </div>
-                                    <p className="text-brand-secondary font-bold text-sm">{'4.8'} / 5.0</p>
-                                    <p className="text-gray-400 text-[10px] font-semibold">{heroProduct.rating_count || Math.floor(Math.random() * 500 + 100)}+ Reviews</p>
+                                    <p className="text-brand-secondary font-bold text-xs md:text-sm">{'4.8'} / 5.0</p>
+                                    <p className="text-gray-400 text-[9px] md:text-[10px] font-semibold">{heroProduct.rating_count || Math.floor(Math.random() * 500 + 100)}+ Reviews</p>
                                 </div>
                                 
                                 {heroProduct.sale_price && heroProduct.regular_price && (
-                                    <div className="absolute -right-8 bottom-1/4 bg-[#f5c842] rounded-xl p-4 shadow-xl min-w-[110px] group-hover:-translate-y-2 transition-transform duration-500 delay-150">
-                                        <Tag size={20} className="text-[#1e2520] mb-1" />
-                                        <p className="text-[#1e2520] font-extrabold text-lg leading-none">
+                                    <div className="absolute right-2 md:-right-8 bottom-1/4 bg-[#f5c842] rounded-xl p-3 md:p-4 shadow-xl min-w-[90px] md:min-w-[110px] group-hover:-translate-y-2 transition-transform duration-500 delay-150 z-10">
+                                        <Tag size={18} className="text-[#1e2520] mb-1" />
+                                        <p className="text-[#1e2520] font-extrabold text-base md:text-lg leading-none">
                                             {Math.round(((heroProduct.regular_price - heroProduct.sale_price) / heroProduct.regular_price) * 100)}%
                                         </p>
-                                        <p className="text-[#1e2520]/70 text-[10px] font-bold uppercase tracking-wide">Sale Off</p>
+                                        <p className="text-[#1e2520]/70 text-[9px] md:text-[10px] font-bold uppercase tracking-wide">Sale Off</p>
                                     </div>
                                 )}
                             </div>
@@ -244,15 +244,15 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                     {/* Section header */}
-                    <div className="flex flex-col md:flex-row justify-between items-end mb-10 border-b border-gray-200 pb-6 gap-6">
-                        <div className="max-w-xl">
-                            <span className="eyebrow">Our Store</span>
-                            <h2 className="font-serif text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold text-brand-secondary leading-tight">
+                    <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-8 border-b border-gray-200 pb-6 gap-6">
+                        <div className="w-full text-center md:text-left">
+                            <span className="eyebrow block mx-auto md:mx-0">Our Store</span>
+                            <h2 className="font-serif text-[clamp(2.1rem,4vw,2.8rem)] font-bold text-brand-secondary leading-tight mt-1">
                                 All Products
                             </h2>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="w-full flex flex-wrap items-center justify-center md:justify-end gap-3">
                             {error && (
                                 <button
                                     onClick={() => {
@@ -288,10 +288,10 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 mb-10">
+                    <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] pb-2 gap-2 mb-10 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
                         <button
                             onClick={() => handleCategoryChange('all')}
-                            className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${activeCategory === 'all' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white text-brand-secondary border-gray-200 hover:border-brand-primary hover:text-brand-primary'}`}
+                            className={`shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-all ${activeCategory === 'all' ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white text-brand-secondary border-gray-200 hover:border-brand-primary hover:text-brand-primary'}`}
                         >
                             All
                         </button>
@@ -299,7 +299,7 @@ export default function Home() {
                             <button
                                 key={cat.id}
                                 onClick={() => handleCategoryChange(String(cat.id))}
-                                className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${activeCategory === String(cat.id) ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white text-brand-secondary border-gray-200 hover:border-brand-primary hover:text-brand-primary'}`}
+                                className={`shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-all ${activeCategory === String(cat.id) ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white text-brand-secondary border-gray-200 hover:border-brand-primary hover:text-brand-primary'}`}
                             >
                                 {cat.name}
                             </button>

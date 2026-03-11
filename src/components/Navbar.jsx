@@ -82,12 +82,12 @@ export default function Navbar() {
                                 </button>
                             </div>
                         ) : (
-                            <Link
-                                to="/auth"
-                                className="hidden sm:flex items-center gap-1.5 text-[0.82rem] font-bold text-brand-primary border border-brand-primary px-3 py-1.5 rounded-full hover:bg-brand-primary hover:text-white transition-all"
-                            >
-                                <User size={13} /> Sign In
-                            </Link>
+                                <Link
+                                    to="/auth"
+                                    className="hidden sm:flex items-center gap-1.5 text-[0.82rem] font-bold text-brand-primary border border-brand-primary px-3 py-1.5 rounded-full hover:bg-brand-primary hover:text-white transition-all"
+                                >
+                                    <User size={13} /> Sign In
+                                </Link>
                         )}
 
                         {/* Cart */}
@@ -117,7 +117,22 @@ export default function Navbar() {
                         <Link to="/" onClick={() => setMobileOpen(false)} className="font-semibold text-brand-secondary py-2 border-b border-[#1e2520]/05 hover:text-brand-primary transition-colors">Home</Link>
                         <a href="/#store" onClick={() => setMobileOpen(false)} className="font-semibold text-brand-secondary py-2 border-b border-[#1e2520]/05 hover:text-brand-primary transition-colors">Shop</a>
                         <Link to="/wishlist" onClick={() => setMobileOpen(false)} className="font-semibold text-brand-secondary py-2 border-b border-[#1e2520]/05 hover:text-brand-primary transition-colors">Wishlist</Link>
-                        {!user && (
+                        {user ? (
+                            <>
+                                <Link to="/account" onClick={() => setMobileOpen(false)} className="font-semibold text-brand-secondary py-2 border-b border-[#1e2520]/05 hover:text-brand-primary transition-colors flex items-center gap-2">
+                                    <User size={18} /> {user.first_name || 'Account'}
+                                </Link>
+                                <button
+                                    onClick={() => {
+                                        logout();
+                                        setMobileOpen(false);
+                                    }}
+                                    className="font-semibold text-red-600 py-2 hover:text-red-700 transition-colors flex items-center gap-2 text-left"
+                                >
+                                    <LogOut size={18} /> Sign Out
+                                </button>
+                            </>
+                        ) : (
                             <Link to="/auth" onClick={() => setMobileOpen(false)} className="btn-primary w-full mt-2 justify-center">Sign In</Link>
                         )}
                     </div>

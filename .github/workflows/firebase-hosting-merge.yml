@@ -11,6 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Create .env file
+        run: |
+          echo "VITE_WC_URL=${{ secrets.VITE_WC_URL }}" >> .env
+          echo "VITE_WC_CONSUMER_KEY=${{ secrets.VITE_WC_CONSUMER_KEY }}" >> .env
+          echo "VITE_WC_CONSUMER_SECRET=${{ secrets.VITE_WC_CONSUMER_SECRET }}" >> .env
+          echo "VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}" >> .env
+          echo "VITE_STRIPE_SECRET_KEY=${{ secrets.VITE_STRIPE_SECRET_KEY }}" >> .env
+          
       - run: npm ci && npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -18,3 +26,5 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CLOUDGENZ_ECOMMERCE_DEMO }}
           channelId: live
           projectId: cloudgenz-ecommerce-demo
+        env:
+          FIREBASE_CLI_EXPERIMENTS: webframeworks
